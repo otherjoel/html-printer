@@ -211,7 +211,7 @@
              (send hp put/wrap! out-str))
          (values out-str (+ 1 count) 'normal)))
      (cond
-       [(or (whitespace? last-word) (= 1 count)) 'sticky]
+       [(or (not (whitespace? last-word)) (= 1 count)) 'sticky]
        [else 'normal])]
     ))
 
@@ -222,8 +222,14 @@
 
 (module+ test
   (require (for-syntax racket/base) racket/string)
-  (define (->str v) (string-split (xexpr->html5 v #:wrap-at 20) (sys-newline)))
-  ;(->str '(main (article (p (em "Hello") " World"))))
+  
+  ;; Convert output to lists of strings for use in tests
+  (define (->strs v) (string-split (xexpr->html5 v #:wrap-at 20) (sys-newline)))
+
+  ;; Nice for visual checks
+  (define (disp v)
+    (displayln "----|----1----|----2----|----3----|")
+    (display (xexpr->html5 v #:wrap-at 20)))
 
   (define-syntax (check-fmt stx)
     (syntax-case stx ()
@@ -235,7 +241,6 @@
          (check-equal? (xexpr->html5 xpr #:wrap-at width) (string-join strs (sys-newline)) msg))]))
   
   (define (xpr vs) `(body (main (article ,@vs))))
-  ;(define (rule) (displayln "\n123456789012345678980"))
 
   (check-fmt "Naked strings work correctly" " Hi" '("Hi"))
   
@@ -253,9 +258,18 @@
   (check-fmt "attribute values never wrap"
              `(head (link [[href "x x x x x x x x x x x x x x x x x x x x"]]))
              '("<head>"
-               "  <link href=" "  \"x x x x x x x x x x x x x x x x x x x x\">"
+               "  <link href="
+               "  \"x x x x x x x x x x x x x x x x x x x x\">"
                "</head>\n"))
 
+  ; Wrapping based on graphemes not bytes
+
+  ; Block and inline elements as siblings
+
+  ; Symbols and integers printed as character entities
+
+  ; Behavior when indent levels pass wrapping width??
+  
   (check-fmt "Linebreaks added after <br>"
              '(p "one" (br) "two three four five six")
              '("<p>one<br>"
@@ -289,6 +303,18 @@
              '("<article>"
                "  <p><em>1</em><em>2</em><em>3</em><em>4</em><em>5</em><em>6</em></p>"
                "</article>\n"))
+
+  (check-fmt "linebreaks not inserted where they would introduce whitespace (final word of inline tag)"
+             '(p (span "one two three") (i "four"))
+             '("<p><span>one two "
+               "three</span><i>four</i></p>\n"))
+
+  ;; Not passing yet! requires looking ahead before printing opening <i> 
+  (check-fmt "allow wrap between inline elements when first ends in whitespace"
+             '(p (span "one two three ") (i "four"))
+             '("<p><span>one two "
+               "three </span>"
+               "<i>four</i></p>\n"))
   
   (check-fmt "script and style tags are printed without alteration"
              (xpr '((script "console.log(5 + 6); console.log(5 + 6); console.log(5 + 6);")
