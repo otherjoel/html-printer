@@ -5,7 +5,10 @@
 (provide whitespace?
          linebreak?
          newline-convention
-         sys-newline)
+         sys-newline
+         escape
+         string-element-table
+         attribute-table)
 
 (define newline-convention (make-parameter (system-type)))
 
@@ -38,3 +41,27 @@
   (check-true (linebreak? "\r\r\n\r\n\n") "CR and LF in any amount and order are line breaks")
   (check-false (linebreak? " \r\n") "any non-CRLF character disqualifies string as a line break")
   )
+
+;;
+;; XML Escapes
+;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+;; Copied from https://github.com/racket/racket/blob/60f7edb0e59d50c65e59bdb21e4955cde892acd9/racket/collects/xml/private/writer.rkt#L191C1-L214C35
+;; Avoiding dependency on xml collection for now.
+
+(define string-element-table #px"[<>&]")
+(define attribute-table #rx"[<>&\"]")
+
+(define (replace-escaped s)
+  (define c (string-ref s 0))
+  (case c
+    [(#\<) "&lt;"]
+    [(#\>) "&gt;"]
+    [(#\&) "&amp;"]
+    [(#\") "&quot;"]
+    [else c]))
+
+(define (escape str table)
+  (cond [(regexp-match table str)
+         (regexp-replace* table str replace-escaped)]
+        [else str]))

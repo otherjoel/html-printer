@@ -62,11 +62,11 @@
     (define-values (key-str val-str)
       (cond
         [(boolean-attr? key)
-         (values (format (if (null? remaining) "~a>" "~a ") (symbol->immutable-string key))
+         (values (format (if (null? remaining) "~a>" "~a ") key)
                  "")]
         [else
          (values (format "~a=" key)
-                 (format (if (null? remaining) "\"~a\">" "\"~a\" ") val))]))
+                 (format (if (null? remaining) "\"~a\">" "\"~a\" ") (escape val attribute-table)))]))
     (values (cons val-str (cons key-str chunks))
             (safe-rest remaining))))
 
@@ -110,6 +110,7 @@
      (send hp put/wrap! "<br>")
      (send hp break/indent!)
      'flow-opened] ; hacky
+    
     ; flow tag
     [(list (? flow? tag) (list (? attr? attrs) ...) elems ...)
      (log-debug "In flow tag ~a" tag)
@@ -206,7 +207,7 @@
                   [prev-tok prev-token]
                   #:result (values last count))
                  ([word (in-words str)])
-         (define out-str (if (linebreak? word) "" word))
+         (define out-str (if (linebreak? word) "" (escape word string-element-table)))
          (if (sticky? prev-tok)
              (send hp put! out-str)
              (send hp put/wrap! out-str))
@@ -270,10 +271,11 @@
 
   ; Block and inline elements as siblings
 
-  ; Not yet passing:
-  (check-fmt "Characters < > & printed as character entities"
-             '(span "Symbols < > &")
-             '("<span>Symbols &lt; &gt; &amp;</span>"))
+  (check-fmt "Escape < > & in string elements, and < > & \" in attributes"
+             '(span [[x "<\">&"]] "Symbols < \" > &")
+             '("<span x="
+               "\"&lt;&quot;&gt;&amp;\">Symbols"
+               "&lt; \" &gt; &amp;</span>"))
 
   ; Symbols and integers printed as character entities
 
