@@ -266,6 +266,11 @@
 
   ; Block and inline elements as siblings
 
+  ; Not yet passing:
+  (check-fmt "Characters < > & printed as character entities"
+             '(span "Symbols < > &")
+             '("<span>Symbols &lt; &gt; &amp;</span>"))
+
   ; Symbols and integers printed as character entities
 
   ; Behavior when indent levels pass wrapping width??
@@ -349,8 +354,16 @@
                "    </article>"
                "  </main>"
                "</body>\n"))
+
+  (check-fmt "Pre tag contents preserved"
+             '(div (pre "\none\n  two  \n    three"))
+             '("<div>"
+               "  <pre>"
+               "one"
+               "  two  "
+               "    three</pre>"
+               "</div>\n"))
   
-  ;; Header section 
   (check-fmt "<head> wraps/indents correctly"
              '(html (head (link [[rel "stylesheet"] [href "style.css"]])
                           (meta [[charset "UTF-8"]])
@@ -387,6 +400,36 @@
                "    </tr>"
                "  </tbody>"
                "</table>\n"))
+
+  #;(check-fmt 80 "Indentation consistent in the presence of additional whitespace elements"
+             '(html ()
+                    "\n  "
+                    (head () "\n    "
+                          (title () "Minimal Post")
+                          "\n  ")
+                    "\n  "
+                    (body () "\n    "
+                          (div ((class "article"))
+                               (article (h1 "Minimal Post")
+                                        (p "Lorem ipsum dolor sit amet, consectetur adipiscing elit. "
+                                           "Maecenas nisi libero,\nscelerisque vel nulla eu, "
+                                           "tristique porta metus.")))
+                          "\n  ")
+                    "\n")
+             '("<html>"
+               "  <head>"
+               "    <title>Minimal Post</title>"
+               "  </head>"
+               "  <body>"
+               "    <div class=\"article\">"
+               "      <article>"
+               "        <h1>Minimal Post</h1>"
+               "        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas "
+               "        nisi libero,scelerisque vel nulla eu, tristique porta metus.</p>"
+               "      </article>"
+               "    </div>"
+               "  </body>"
+               "</html>"))
 
   (check-fmt 80 "Forms wrap as expected"
              '(form ((accept-charset "utf-8")
