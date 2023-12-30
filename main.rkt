@@ -11,7 +11,7 @@
 
 (define default-block-tags
   '(address article aside canvas dd dl dt fieldset figcaption
-            h1 h2 h3 h4 h5 h6 hgroup hr link noscript output p pre section title tr td meta
+            h1 h2 h3 h4 h5 h6 hgroup hr link noscript output p section title tr td meta
             video))
 
 (define default-flow-tags
@@ -32,7 +32,7 @@
 
 (define (block? tag) (memq (symbol-downcase tag) default-block-tags))
 (define (flow? tag) (memq (symbol-downcase tag) default-flow-tags))
-(define (script-or-style? tag) (memq (symbol-downcase tag) '(script style)))
+(define (preserve-contents? tag) (memq (symbol-downcase tag) '(script style pre)))
 (define (self-closing? tag) (memq (symbol-downcase tag) default-selfclose-tags))
 (define (boolean-attr? a) (memq (symbol-downcase a) html5-boolean-attrs))
 (define (br? tag) (eq? (symbol-downcase tag) 'br))
@@ -154,8 +154,8 @@
      (send hp break!)
      'block-closed]
     
-    ; script or style
-    [(list (? script-or-style? tag) (list (? attr? attrs) ...) elems ...)
+    ; script, style, pre
+    [(list (? preserve-contents? tag) (list (? attr? attrs) ...) elems ...)
      (log-debug "In ~a tag" tag)
      (unless (flow-opened? prev-token) (send hp indent!))
      (send hp put! (opener tag attrs))
