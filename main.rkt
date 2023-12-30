@@ -218,6 +218,19 @@
         prev-token]
        [(or (not (whitespace? last-word)) (= 1 count)) 'sticky]
        [else 'normal])]
+
+    [(? symbol? s)
+     (define out-str (format "&~a;" s))
+     (if (sticky? prev-token)
+         (send hp put! out-str)
+         (send hp put/wrap! out-str))
+     'sticky]
+    [(? exact-positive-integer? i)
+     (define out-str (format "&#~a;" i))
+     (if (sticky? prev-token)
+         (send hp put! out-str)
+         (send hp put/wrap! out-str))
+     'sticky]
     ))
 
 (define (xexpr->html5 v #:wrap-at [wrap 100])
@@ -276,6 +289,10 @@
              '("<span x="
                "\"&lt;&quot;&gt;&amp;\">Symbols"
                "&lt; \" &gt; &amp;</span>"))
+
+  (check-fmt "Symbols and numbers converted to entities"
+             '(span nbsp 20)
+             '("<span>&nbsp;&#20;</span>"))
 
   ; Symbols and integers printed as character entities
 

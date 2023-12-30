@@ -31,7 +31,6 @@ See the tests at the end of main.rkt to get an idea of what it can do so far.  T
 there are passing at this point. Lots to do though:
 
 - Add many more tests
-- Add support for symbols, numeric entities, comments
 - Revamp the `wrapping-printer` (higher-order function vs. class)
 - Add lookahead (or deferred output) for smarter wrapping (see [this
   test](https://github.com/otherjoel/html-writer/blob/8ad22632d46bc6c413f271436fea9974ce6c331a/main.rkt#L312-L317))
