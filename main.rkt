@@ -197,6 +197,7 @@
     ;; Strings are broken up and printed one word at a time. Much depends on the behavior of
     ;; in-words, which yields separate words for consecutive whitespace and for each individually
     ;; valid combination of CRLF characters (so "\r\r\n" becomes '("\r" "\r\n"), e.g.)
+    ;; This match is never reached while inside <script>, <style> or <pre>
     [(? string? str)
      (log-debug "Processing string content…")
      (define-values (last-word count)
@@ -211,6 +212,9 @@
              (send hp put/wrap! out-str))
          (values out-str (+ 1 count) 'normal)))
      (cond
+       [(and (memq prev-token '(flow-opened flow-closed block-closed))
+             (whitespace? str))
+        prev-token]
        [(or (not (whitespace? last-word)) (= 1 count)) 'sticky]
        [else 'normal])]
     ))
@@ -401,7 +405,7 @@
                "  </tbody>"
                "</table>\n"))
 
-  #;(check-fmt 80 "Indentation consistent in the presence of additional whitespace elements"
+  (check-fmt 80 "Indentation consistent in the presence of additional whitespace elements"
              '(html ()
                     "\n  "
                     (head () "\n    "
@@ -429,7 +433,7 @@
                "      </article>"
                "    </div>"
                "  </body>"
-               "</html>"))
+               "</html>\n"))
 
   (check-fmt 80 "Forms wrap as expected"
              '(form ((accept-charset "utf-8")
