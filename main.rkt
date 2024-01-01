@@ -3,7 +3,6 @@
 (require "private/log.rkt"
          "private/strings.rkt"
          "private/printer.rkt"
-         racket/class
          racket/match
          racket/port
          racket/symbol
@@ -104,96 +103,79 @@
 (define (flow-closed? v) (eq? v 'flow-closed))
 (define (block-closed? v) (eq? v 'block-closed))
 
-(define (display-val hp v [prev-token 'normal] #:in-inline? [inside-inline? #f])
+(define (display-val yeet! v [prev-token 'normal] #:in-inline? [inside-inline? #f])
   (match v
     [(list (and (? symbol?) (? br?)))
-     (send hp put/wrap! "<br>")
-     (send hp break/indent!)
+     (yeet! '(put/wrap "<br>") 'break/indent)
      'flow-opened] ; hacky
     
     ; flow tag
     [(list (? flow? tag) (list (? attr? attrs) ...) elems ...)
-     (log-debug "In flow tag ~a" tag)
      (when inside-inline?
-       (log-err "Flow tag ~a inside inline tag ~a; formatting will be incorrect!" tag inside-inline?))
-     (unless (flow-opened? prev-token) (send hp indent!))
-     (send hp put! (opener tag attrs))
-     (unless (null? attrs) (log-debug "Before ~a attrs, at column ~a" tag (send hp get-col)))
+        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
+     (unless (flow-opened? prev-token) (yeet! 'indent))
+     (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
-       (send hp put/wrap! a))
-     (unless (null? attrs) (log-debug "After ~a attrs, at column ~a" tag (send hp get-col)))
-     (send hp break+bump!)
+       (yeet! `(put/wrap ,a)))
+     (yeet! 'break/++indent)
      (define last-tok
        (for/fold ([last-token 'flow-opened])
                  ([elem (in-list elems)])
-         (display-val hp elem last-token)))
+         (display-val yeet! elem last-token)))
      (if (or (block-closed? last-tok) (flow-closed? last-tok))
-         (send hp indent/unbump!)
-         (send hp break+unbump!))
-     (send hp put/wrap! (closer tag))
-     (send hp break!)
+         (yeet! '--indent)
+         (yeet! 'break/--indent))
+     (yeet! `(put/wrap ,(closer tag))
+           'break)
      'flow-closed]
     
     ; block tag
     [(list (? block? tag) (list (? attr? attrs) ...) elems ...)
-     (log-debug "In block tag ~a" tag)
-     (cond
-       [inside-inline?
-        (log-err "Block tag ~a inside inline tag ~a; formatting will be incorrect!"
-                 tag
-                 inside-inline?)])
-     (unless (flow-opened? prev-token) (send hp indent!))
-     (unless (null? attrs) (log-debug "Before ~a attrs, at column ~a" tag (send hp get-col)))
-     (send hp put! (opener tag attrs))
+     (when inside-inline?
+        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
+     (unless (flow-opened? prev-token) (yeet! 'indent))
+     (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
-       (send hp put/wrap! a))
-     (unless (null? attrs) (log-debug "After ~a attrs, at column ~a" tag (send hp get-col)))
+       (yeet! `(put/wrap ,a)))
      (for/fold ([last-token 'sticky])
                ([elem (in-list elems)])
-       (display-val hp elem last-token))
-     (send hp put! (closer tag))
-     (send hp break!)
+       (display-val yeet! elem last-token))
+     (yeet! `(put ,(closer tag))
+           'break)
      'block-closed]
     
     ; script, style, pre
     [(list (? preserve-contents? tag) (list (? attr? attrs) ...) elems ...)
-     (log-debug "In ~a tag" tag)
-     (unless (flow-opened? prev-token) (send hp indent!))
-     (send hp put! (opener tag attrs))
+     (unless (flow-opened? prev-token) (yeet! 'indent))
+     (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
-       (send hp put/wrap! a))
+       (yeet! `(put/wrap ,a)))
      (for ([elem (in-list elems)])
-       (log-debug "elem: ~a" elem)
-       (send hp put! elem))
-     (log-debug "Ended ~a tag content at column ~a" tag (send hp get-col))
-     (when (= 1 (send hp get-col)) (send hp indent!))
-     (send hp put! (closer tag))
-     (send hp break!)
+       (yeet! `(put ,elem)))
+     (yeet! 'indent-if-col1
+           `(put ,(closer tag))
+           'break)
      'block-closed]
     
     ; inline tag
     [(list (? symbol? tag) (list (? attr? attrs) ...) elems ...)
      (log-debug "In inline tag ~a" tag)
-     (when (or (flow-closed? prev-token) (block-closed? prev-token)) (send hp indent!))
-     (cond [(sticky? prev-token)
-            (send hp put! (opener tag attrs))]
-           [else
-            (send hp put/wrap! (opener tag attrs))])
+     (when (or (flow-closed? prev-token)
+               (block-closed? prev-token))
+       (yeet! 'indent))
+     (yeet! `(,(if (sticky? prev-token) 'put 'put/wrap) ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
-       (send hp put/wrap! a))
+       (yeet! `(put/wrap ,a)))
      (define last-token
        (for/fold ([last 'sticky])
                  ([elem (in-list elems)])
-         (display-val hp elem last #:in-inline? tag)))
-     (cond [(sticky? last-token)
-            (send hp put! (closer tag))]
-           [else
-            (send hp put/wrap! (closer tag))])
+         (display-val yeet! elem last #:in-inline? tag)))
+     (yeet! `(,(if (sticky? last-token) 'put 'put/wrap) ,(closer tag)))
      last-token]
     
     ; no attributes = send it through again
     [(list* (? symbol? tag) elems)
-     (display-val hp `(,tag () ,@elems) prev-token #:in-inline? inside-inline?)]
+     (display-val yeet! `(,tag () ,@elems) prev-token #:in-inline? inside-inline?)]
 
     ;; Strings are broken up and printed one word at a time. Much depends on the behavior of
     ;; in-words, which yields separate words for consecutive whitespace and for each individually
@@ -208,9 +190,7 @@
                   #:result (values last count))
                  ([word (in-words str)])
          (define out-str (if (linebreak? word) "" (escape word string-element-table)))
-         (if (sticky? prev-tok)
-             (send hp put! out-str)
-             (send hp put/wrap! out-str))
+         (yeet! `(,(if (sticky? prev-tok) 'put 'put/wrap) ,out-str))
          (values out-str (+ 1 count) 'normal)))
      (cond
        [(and (memq prev-token '(flow-opened flow-closed block-closed))
@@ -221,23 +201,18 @@
 
     [(? symbol? s)
      (define out-str (format "&~a;" s))
-     (if (sticky? prev-token)
-         (send hp put! out-str)
-         (send hp put/wrap! out-str))
+     (yeet! `(,(if (sticky? prev-token) 'put 'put/wrap) ,out-str))
      'sticky]
     
     [(? exact-positive-integer? i)
      (define out-str (format "&#~a;" i))
-     (if (sticky? prev-token)
-         (send hp put! out-str)
-         (send hp put/wrap! out-str))
+     (yeet! `(,(if (sticky? prev-token) 'put 'put/wrap) ,out-str))
      'sticky]
     ))
 
 (define (xexpr->html5 v #:wrap-at [wrap 100])
   (with-output-to-string
-    (λ () (display-val (new wrapping-printer% [wrap wrap]) v))))
-
+    (λ () (display-val (make-wrapping-printer #:wrap-at wrap) v))))
 
 (module+ test
   (require (for-syntax racket/base) racket/string)
