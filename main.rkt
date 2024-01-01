@@ -225,6 +225,7 @@
          (send hp put! out-str)
          (send hp put/wrap! out-str))
      'sticky]
+    
     [(? exact-positive-integer? i)
      (define out-str (format "&#~a;" i))
      (if (sticky? prev-token)
@@ -280,7 +281,28 @@
                "  \"x x x x x x x x x x x x x x x x x x x x\">"
                "</head>\n"))
 
-  ; Wrapping based on graphemes not bytes
+  (check-fmt "UTF-8: Multi-byte emojis count as 1 grapheme and as individual words"
+             (xpr '((p "🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️")))
+             '("<body>"
+               "  <main>"
+               "    <article>"
+               "      <p>🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️🧞‍♀️🧝‍♂️🧝‍♀️"
+               "      🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️</p>"
+               "    </article>"
+               "  </main>"
+               "</body>\n"))
+
+  ;; http://utf8everywhere.org — section 8.3
+  (check-fmt "UTF-8: Languages with multi-byte graphemes wrap correctly"
+             (xpr '((p "Приве́т नमस्ते שָׁלוֹם")))
+             '("<body>"
+               "  <main>"
+               "    <article>"
+               "      <p>Приве́т "
+               "      नमस्ते שָׁלוֹם</p>"
+               "    </article>"
+               "  </main>"
+               "</body>\n"))
 
   ; Block and inline elements as siblings
 
@@ -291,10 +313,9 @@
                "&lt; \" &gt; &amp;</span>"))
 
   (check-fmt "Symbols and numbers converted to entities"
-             '(span nbsp 20)
-             '("<span>&nbsp;&#20;</span>"))
-
-  ; Symbols and integers printed as character entities
+             '(span (em "abcde fghi") nbsp 20)
+             '("<span><em>abcde "
+               "fghi</em>&nbsp;&#20;</span>"))
 
   ; Behavior when indent levels pass wrapping width??
   
