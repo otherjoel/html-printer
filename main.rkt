@@ -8,6 +8,8 @@
          racket/symbol
          unicode-breaks)
 
+(provide xexpr->html5)
+
 (define default-block-tags
   '(address article aside canvas dd dl dt fieldset figcaption
             h1 h2 h3 h4 h5 h6 hgroup hr link noscript output p section title tr td meta
