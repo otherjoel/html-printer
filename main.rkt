@@ -191,7 +191,7 @@
                   [prev-tok prev-token]
                   #:result (values last count))
                  ([word (in-words str)])
-         (define out-str (if (linebreak? word) "" (escape word string-element-table)))
+         (define out-str (if (linebreak? word) " " (escape word string-element-table)))
          (yeet! `(,(if (sticky? prev-tok) 'put 'put/wrap) ,out-str))
          (values out-str (+ 1 count) 'normal)))
      (cond
@@ -335,6 +335,12 @@
              '("<p><span>one two "
                "three</span><i>four</i></p>\n"))
 
+  (check-fmt "linebreaks present in string element content are preserved as whitespace"
+             '(p "What if there are linebreaks\nin the input?")
+             '("<p>What if there"
+               "are linebreaks in "
+               "the input?</p>"))
+
   ;; Not passing yet! requires looking ahead before printing opening <i> 
   #;(check-fmt "allow wrap between inline elements when first ends in whitespace"
                '(p (span "one two three ") (i "four"))
@@ -446,7 +452,7 @@
                "      <article>"
                "        <h1>Minimal Post</h1>"
                "        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas "
-               "        nisi libero,scelerisque vel nulla eu, tristique porta metus.</p>"
+               "        nisi libero, scelerisque vel nulla eu, tristique porta metus.</p>"
                "      </article>"
                "    </div>"
                "  </body>"
