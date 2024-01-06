@@ -112,7 +112,7 @@
     ; flow tag
     [(list (? flow? tag) (list (? attr? attrs) ...) elems ...)
      (when inside-inline?
-        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
+       (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
      (unless (flow-opened? prev-token) (yeet! 'indent))
      (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
@@ -126,13 +126,13 @@
          (yeet! '--indent)
          (yeet! 'break/--indent))
      (yeet! `(put/wrap ,(closer tag))
-           'break)
+            'break)
      'flow-closed]
     
     ; block tag
     [(list (? block? tag) (list (? attr? attrs) ...) elems ...)
      (when inside-inline?
-        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
+       (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
      (unless (flow-opened? prev-token) (yeet! 'indent))
      (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
@@ -141,7 +141,7 @@
                ([elem (in-list elems)])
        (display-val yeet! elem last-token))
      (yeet! `(put ,(closer tag))
-           'break)
+            'break)
      'block-closed]
     
     ; script, style, pre
@@ -153,8 +153,8 @@
      (for ([elem (in-list elems)])
        (yeet! `(put ,elem)))
      (yeet! 'indent-if-col1
-           `(put ,(closer tag))
-           'break)
+            `(put ,(closer tag))
+            'break)
      'block-closed]
     
     ; inline tag
