@@ -337,9 +337,9 @@
 
   (check-fmt "linebreaks present in string element content are preserved as whitespace"
              '(p "What if there are linebreaks\nin the input?")
-             '("<p>What if there"
+             '("<p>What if there "
                "are linebreaks in "
-               "the input?</p>"))
+               "the input?</p>\n"))
 
   ;; Not passing yet! requires looking ahead before printing opening <i> 
   #;(check-fmt "allow wrap between inline elements when first ends in whitespace"
