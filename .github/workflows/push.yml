@@ -1,0 +1,30 @@
+name: Tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        racket-variant: ['BC', 'CS']
+        racket-version: ['8.1', '8.2', '8.3', '8.4', '8.5', '8.6', '8.7', '8.8', '8.9', '8.10','8.11']
+    name: Test on Racket ${{ matrix.racket-version }} ${{ matrix.racket-variant }}
+    steps:
+      - name: Checkout splitflap repo
+        uses: actions/checkout@master
+      - name: Install Racket ${{ matrix.racket-version }} ${{ matrix.racket-variant }}
+        uses: Bogdanp/setup-racket@v1.11
+        with:
+          architecture: 'x64'
+          distribution: 'full'
+          variant: ${{ matrix.racket-variant }}
+          version: ${{ matrix.racket-version }}
+      - name: Install package with dependencies
+        run: raco pkg install --auto --batch --link
+      - name: Run tests
+        run: raco test .
