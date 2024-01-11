@@ -15,7 +15,7 @@ jobs:
         racket-version: ['8.7', '8.8', '8.9', '8.10','8.11']
     name: Test on Racket ${{ matrix.racket-version }} ${{ matrix.racket-variant }}
     steps:
-      - name: Checkout splitflap repo
+      - name: Checkout html-writer repo
         uses: actions/checkout@master
       - name: Install Racket ${{ matrix.racket-version }} ${{ matrix.racket-variant }}
         uses: Bogdanp/setup-racket@v1.11
