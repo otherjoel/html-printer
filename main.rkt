@@ -3,8 +3,10 @@
 (require "private/log.rkt"
          "private/strings.rkt"
          "private/printer.rkt"
+         racket/list
          racket/match
          racket/port
+         racket/string
          racket/symbol
          unicode-breaks)
 
@@ -86,7 +88,6 @@
                 '("SELECTED " "" "href=" "\"a\">")
                 "boolean attributes handled correctly regardless of case"))
 
-
 (define (opener tag attrs)
   (format (if (not (null? attrs)) "<~a " "<~a>") tag))
 
@@ -108,42 +109,45 @@
 (define (display-val yeet! v [prev-token 'normal] #:in-inline? [inside-inline? #f])
   (match v
     [(list (and (? symbol?) (? br?)))
-     (yeet! '(put/wrap "<br>") 'break/indent)
+     (log-debug "[prev ~a] br" prev-token)
+     (yeet! '(put/wrap "<br>") 'flush 'break/indent)
      'flow-opened] ; hacky
     
     ; flow tag
     [(list (? flow? tag) (list (? attr? attrs) ...) elems ...)
+     (log-debug "[prev ~a] In flow tag ~a" prev-token tag)
      (when inside-inline?
        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
      (unless (flow-opened? prev-token) (yeet! 'indent))
      (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
        (yeet! `(put/wrap ,a)))
-     (yeet! 'break/++indent)
+     (yeet! 'flush 'break/++indent)
      (define last-tok
        (for/fold ([last-token 'flow-opened])
                  ([elem (in-list elems)])
          (display-val yeet! elem last-token)))
      (if (or (block-closed? last-tok) (flow-closed? last-tok))
          (yeet! '--indent)
-         (yeet! 'break/--indent))
+         (yeet! 'flush 'break/--indent))
+     (log-debug "[last ~a] closing ~a" last-tok tag)
      (yeet! `(put/wrap ,(closer tag))
             'break)
      'flow-closed]
     
     ; block tag
     [(list (? block? tag) (list (? attr? attrs) ...) elems ...)
+     (log-debug "[prev ~a] In block tag ~a" prev-token tag)
      (when inside-inline?
        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
      (unless (flow-opened? prev-token) (yeet! 'indent))
      (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
-       (yeet! `(put/wrap ,a)))
-     (for/fold ([last-token 'sticky])
+       (yeet! `(put/wrap ,a)))   
+     (for/fold ([last-token 'normal])
                ([elem (in-list elems)])
        (display-val yeet! elem last-token))
-     (yeet! `(put ,(closer tag))
-            'break)
+     (yeet! 'check/flush `(put ,(closer tag)) 'break)
      'block-closed]
     
     ; script, style, pre
@@ -161,7 +165,7 @@
     
     ; inline tag
     [(list (? symbol? tag) (list (? attr? attrs) ...) elems ...)
-     (log-debug "In inline tag ~a" tag)
+     (log-debug "[prev ~a] In inline tag ~a" prev-token tag)
      (when (or (flow-closed? prev-token)
                (block-closed? prev-token))
        (yeet! 'indent))
@@ -169,11 +173,14 @@
      (for ([a (in-list (attr-chunks attrs))])
        (yeet! `(put/wrap ,a)))
      (define last-token
-       (for/fold ([last 'sticky])
+       (for/fold ([last prev-token]) ; was sticky 
                  ([elem (in-list elems)])
          (display-val yeet! elem last #:in-inline? tag)))
+     (log-debug "[last ~a] closing ~a" last-token tag)
      (yeet! `(,(if (sticky? last-token) 'put 'put/wrap) ,(closer tag)))
-     last-token]
+     (if (member last-token '(normal sticky))
+         last-token
+         'normal)]
     
     ; no attributes = send it through again
     [(list* (? symbol? tag) elems)
@@ -184,16 +191,18 @@
     ;; valid combination of CRLF characters (so "\r\r\n" becomes '("\r" "\r\n"), e.g.)
     ;; This match is never reached while inside <script>, <style> or <pre>
     [(? string? str)
-     (log-debug "Processing string content…")
+     (log-debug "[prev ~a] Start - string content…" prev-token)
      (define-values (last-word count)
        (for/fold ([last ""]
                   [count 0]
                   [prev-tok prev-token]
                   #:result (values last count))
                  ([word (in-words str)])
+         (log-debug "[prev ~a] string - word ~v" prev-tok word)
          (define out-str (if (linebreak? word) " " (escape word string-element-table)))
          (yeet! `(,(if (sticky? prev-tok) 'put 'put/wrap) ,out-str))
          (values out-str (+ 1 count) 'normal)))
+     (log-debug "[~a] End - string content" last-word)
      (cond
        [(and (memq prev-token '(flow-opened flow-closed block-closed))
              (whitespace? str))
@@ -202,22 +211,35 @@
        [else 'normal])]
 
     [(? symbol? s)
+     (log-debug "[prev ~a] symbol ~a" prev-token s)
      (define out-str (format "&~a;" s))
      (yeet! `(,(if (sticky? prev-token) 'put 'put/wrap) ,out-str))
      'sticky]
     
     [(? exact-positive-integer? i)
+     (log-debug "[prev ~a] integer ~a" prev-token i)
      (define out-str (format "&#~a;" i))
      (yeet! `(,(if (sticky? prev-token) 'put 'put/wrap) ,out-str))
      'sticky]
     ))
 
-(define (xexpr->html5 v #:wrap-at [wrap 100])
+(define (xexpr->html5 v #:wrap [wrap 100])
   (with-output-to-string
-    (λ () (display-val (make-wrapping-printer #:wrap-at wrap) v))))
+    (λ ()
+      (define proc (make-wrapping-printer #:wrap-at wrap))
+      (display-val proc v)
+      (proc 'flush))))
+
+(define (w/rule str)
+  (string-append "\n----|----1----|----2----|----3----|\n"
+                 (string-replace str " " "·")))
+
+(define (debug v #:wrap [wrap 20])
+  (display (w/rule (logging-to-stderr (lambda () (xexpr->html5 v #:wrap wrap))))))
 
 (module+ test
-  (require (for-syntax racket/base) racket/string)
+  (require "private/tidy.rkt"
+           racket/string)
   
   ;; Convert output to lists of strings for use in tests
   (define (->strs v) (string-split (xexpr->html5 v #:wrap-at 20) (sys-newline)))
@@ -225,41 +247,53 @@
   ;; Nice for visual checks
   (define (disp v)
     (displayln "----|----1----|----2----|----3----|")
-    (display (xexpr->html5 v #:wrap-at 20)))
+    (display (xexpr->html5 v #:wrap 20)))
 
-  (define-syntax (check-fmt stx)
-    (syntax-case stx ()
-      [(_ msg xpr strs)
-       (syntax/loc stx
-         (check-equal? (xexpr->html5 xpr #:wrap-at 20) (string-join strs (sys-newline)) msg))]
-      [(_ width msg xpr strs)
-       (syntax/loc stx
-         (check-equal? (xexpr->html5 xpr #:wrap-at width) (string-join strs (sys-newline)) msg))]))
-  
-  (define (xpr vs) `(body (main (article ,@vs))))
+  (define-check (check-fmt width msg xpr strs)
+    (define my-result (xexpr->html5 xpr #:wrap width))
+    (define standard (string-join strs (sys-newline)))
+    (unless (equal? my-result standard)
+      (with-check-info (['message (string-info msg)]
+                        ['|writer result| (string-info (w/rule my-result))]
+                        ['expected (string-info (w/rule standard))])
+        (fail-check))))
 
-  (check-fmt "Naked strings work correctly" " Hi" '("Hi"))
+  (define-check (check-matches-tidy? width x)
+    (define my-result (xexpr->html5 (xpr x) #:wrap width))
+    (define tidy-result (string-append (tidy x #:wrap width) "\n"))
+    (unless (equal? my-result tidy-result)
+      (with-check-info (['message (string-info "writer result does not match expected tidy output")]
+                        ['|writer result| (string-info (w/rule my-result))]
+                        ['|tidy output| (string-info (w/rule tidy-result))])
+        (fail-check))))
+
+  (check-fmt 20 "Naked strings work correctly" " Hi" '("Hi"))
   
-  (check-fmt "simple xexprs wrap correctly"
-             (xpr '((p (em "Hello") " World")))
+  (check-fmt 20 "simple xexprs wrap correctly"
+             (xpr '(p (em "Hello") " World"))
              '("<body>"
                "  <main>"
                "    <article>"
-               "      <p><em>Hello</em> "
+               "      <p>"
+               "      <em>Hello</em>"
                "      World</p>"
                "    </article>"
                "  </main>"
                "</body>\n"))
 
-  (check-fmt "attribute values never wrap"
-             `(head (link [[href "x x x x x x x x x x x x x x x x x x x x"]]))
+  (check-matches-tidy? 20 '(p (em "Hello") " World"))
+
+  (check-fmt 20 "attribute values never wrap"
+             '(head (link [[href "x x x x x x x x x x x x x x x x x x x x"]]))
              '("<head>"
                "  <link href="
                "  \"x x x x x x x x x x x x x x x x x x x x\">"
                "</head>\n"))
 
-  (check-fmt "UTF-8: Multi-byte emojis count as 1 grapheme and as individual words"
-             (xpr '((p "🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️")))
+  (check-matches-tidy? 20 '(p [[title "x x x x x x x x x x x x x x x x x x x x"]] "z"))
+
+  (check-fmt 20 "UTF-8: Multi-byte emojis count as 1 grapheme and as individual words"
+             (xpr '(p "🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️"))
              '("<body>"
                "  <main>"
                "    <article>"
@@ -269,120 +303,145 @@
                "  </main>"
                "</body>\n"))
 
+  ;(check-matches-tidy? 20 '(p "🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️"))
+
   ;; http://utf8everywhere.org — section 8.3
-  (check-fmt "UTF-8: Languages with multi-byte graphemes wrap correctly"
-             (xpr '((p "Приве́т नमस्ते שָׁלוֹם")))
+  (check-fmt 20 "UTF-8: Languages with multi-byte graphemes wrap correctly"
+             (xpr '(p "Приве́т नमस्ते שָׁלוֹם"))
              '("<body>"
                "  <main>"
                "    <article>"
-               "      <p>Приве́т "
+               "      <p>Приве́т"
                "      नमस्ते שָׁלוֹם</p>"
                "    </article>"
                "  </main>"
                "</body>\n"))
 
+  ;(check-matches-tidy? 20 '(p "Приве́т नमस्ते שָׁלוֹם"))
   ; Block and inline elements as siblings
 
-  (check-fmt "Escape < > & in string elements, and < > & \" in attributes"
-             '(span [[x "<\">&"]] "Symbols < \" > &")
-             '("<span x="
-               "\"&lt;&quot;&gt;&amp;\">Symbols"
-               "&lt; \" &gt; &amp;</span>"))
+  (check-fmt 20 "Escape < > & in string elements, and < > & \" in attributes"
+               '(span [[x "<\">&"]] "Symbols < \" > &")
+               '("<span x="
+                 "\"&lt;&quot;&gt;&amp;\">"
+                 "Symbols &lt; \" &gt;"
+                 "&amp;</span>"))
+  
+  #;(check-matches-tidy? 20 '(span [[x "<\">&"]] "Symbols < \" > &"))
 
-  (check-fmt "Symbols and numbers converted to entities"
+  (check-fmt 20 "Symbols and numbers converted to entities"
              '(span (em "abcde fghi") nbsp 20)
-             '("<span><em>abcde "
+             '("<span><em>abcde"
                "fghi</em>&nbsp;&#20;</span>"))
+
+  ;(check-matches-tidy? 20 '(p (span (em "abcde fghi") nbsp 20)))
 
   ; Behavior when indent levels pass wrapping width??
   
-  (check-fmt "Linebreaks added after <br>"
+  (check-fmt 20 "Linebreaks added after <br>"
              '(p "one" (br) "two three four five six")
              '("<p>one<br>"
                "two three four five"
                "six</p>\n"))
 
-  (check-fmt "linebreaks not inserted where they would introduce whitespace (following inline tag close)"
-             (xpr '((p (em "Hello") "World again")))
+  #;(check-matches-tidy? 20 '(p "one" (br) "two three four five six"))
+
+  (check-fmt 20 "linebreaks not inserted where they would introduce whitespace (following inline tag close)"
+             (xpr '(p (em "Hello") "World again"))
              '("<body>"
                "  <main>"
                "    <article>"
-               "      <p><em>Hello</em>World"
+               "      <p>"
+               "      <em>Hello</em>World"
                "      again</p>"
                "    </article>"
                "  </main>"
                "</body>\n"))
 
-  (check-fmt "linebreaks not inserted where they would introduce whitespace (tag close with only 1 element)"
-             (xpr '((p [[class "x x x x x x x x x x x x x x x x x x x x"]] "hi")))
+  (check-fmt 20 "linebreaks not inserted where they would introduce whitespace (tag close with only 1 element)"
+             (xpr '(p [[class "x x x x x x x x x x x x x x x x x x x x"]] "hi"))
              '("<body>"
                "  <main>"
                "    <article>"
                "      <p class="
-               "      \"x x x x x x x x x x x x x x x x x x x x\">hi</p>"
+               "      \"x x x x x x x x x x x x x x x x x x x x\">"
+               "      hi</p>"
                "    </article>"
                "  </main>"
                "</body>\n"))
 
-  (check-fmt "linebreaks not inserted where they would introduce whitespace (between inline tags)"
+  (check-matches-tidy? 20 '(p [[class "x x x x x x x x x x x x x x x x x x x x"]] "hi"))
+
+  (check-fmt 20 "linebreaks not inserted where they would introduce whitespace (between inline tags)"
              '(article (p (em "1") (em "2") (em "3") (em "4") (em "5") (em "6")))
              '("<article>"
-               "  <p><em>1</em><em>2</em><em>3</em><em>4</em><em>5</em><em>6</em></p>"
+               "  <p>"
+               "  <em>1</em><em>2</em><em>3</em><em>4</em><em>5</em><em>6</em></p>"
                "</article>\n"))
 
-  (check-fmt "linebreaks not inserted where they would introduce whitespace (final word of inline tag)"
+  (check-matches-tidy? 20 '(p (em "1") (em "2") (em "3") (em "4") (em "5") (em "6")))
+
+  (check-fmt 20 "linebreaks not inserted where they would introduce whitespace (final word of inline tag)"
              '(p (span "one two three") (i "four"))
-             '("<p><span>one two "
+             '("<p><span>one two"
                "three</span><i>four</i></p>\n"))
 
-  (check-fmt "linebreaks present in string element content are preserved as whitespace"
+  (check-fmt 20 "linebreaks present in string element content are preserved as whitespace"
              '(p "What if there are linebreaks\nin the input?")
-             '("<p>What if there "
-               "are linebreaks in "
+             '("<p>What if there"
+               "are linebreaks in"
                "the input?</p>\n"))
 
-  ;; Not passing yet! requires looking ahead before printing opening <i> 
-  #;(check-fmt "allow wrap between inline elements when first ends in whitespace"
-               '(p (span "one two three ") (i "four"))
-               '("<p><span>one two "
-                 "three </span>"
-                 "<i>four</i></p>\n"))
+  ;; Not passing yet! requires looking ahead before printing opening <i>
   
-  (check-fmt "script and style tags are printed without alteration"
-             (xpr '((script "console.log(5 + 6); console.log(5 + 6); console.log(5 + 6);")
+  (check-fmt 20 "allow wrap between inline elements when first ends in whitespace"
+               '(p (span "one two three ") (i "four"))
+               '("<p><span>one two"
+                 "three </span><i>"
+                 "four</i></p>\n"))
+
+  #;(check-matches-tidy? 20 '(p (span "one two three ") (i "four")))
+  
+  (check-fmt 20 "script and style tags are printed without alteration"
+             (xpr '(div
+                    (script "console.log(5 + 6); console.log(5 + 6); console.log(5 + 6);")
                     (style "body {\n  font-family: serif;\n  color: hsl(var(--accent),10%,35%);\n  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}")))
              '("<body>"
                "  <main>"
                "    <article>"
-               "      <script>console.log(5 + 6); console.log(5 + 6); console.log(5 + 6);</script>"
-               "      <style>body {"
+               "      <div>"
+               "        <script>console.log(5 + 6); console.log(5 + 6); console.log(5 + 6);</script>"
+               "        <style>body {"
                "  font-family: serif;"
                "  color: hsl(var(--accent),10%,35%);"
                "  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}</style>"
+               "      </div>"
                "    </article>"
                "  </main>"
                "</body>\n"))
 
-  (check-fmt "script and style closing tags are indented properly when content ends on new line"
-             (xpr '((script "console.log(5 + 6); console.log(5 + 6); console.log(5 + 6);\n")
-                    (style "\nbody {\n  font-family: serif;\n  color: hsl(var(--accent),10%,35%);\n  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);\n}\n")))
+  (check-fmt 20 "script and style closing tags are indented properly when content ends on new line"
+             (xpr '(div (script "console.log(5 + 6); console.log(5 + 6); console.log(5 + 6);\n")
+                        (style "\nbody {\n  font-family: serif;\n  color: hsl(var(--accent),10%,35%);\n  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);\n}\n")))
              '("<body>"
                "  <main>"
                "    <article>"
-               "      <script>console.log(5 + 6); console.log(5 + 6); console.log(5 + 6);"
-               "      </script>"
-               "      <style>"
+               "      <div>"
+               "        <script>console.log(5 + 6); console.log(5 + 6); console.log(5 + 6);"
+               "        </script>"
+               "        <style>"
                "body {"
                "  font-family: serif;"
                "  color: hsl(var(--accent),10%,35%);"
                "  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);"
                "}"
-               "      </style>"
+               "        </style>"
+               "      </div>"
                "    </article>"
                "  </main>"
                "</body>\n"))
 
-  (check-fmt "Pre tag contents preserved"
+  (check-fmt 20 "Pre tag contents preserved"
              '(div (pre "\none\n  two  \n    three"))
              '("<div>"
                "  <pre>"
@@ -391,7 +450,7 @@
                "    three</pre>"
                "</div>\n"))
   
-  (check-fmt "<head> wraps/indents correctly"
+  (check-fmt 20 "<head> wraps/indents correctly"
              '(html (head (link [[rel "stylesheet"] [href "style.css"]])
                           (meta [[charset "UTF-8"]])
                           (title "onetwothreefour five")))
@@ -403,12 +462,13 @@
                "    \"style.css\">"
                "    <meta charset="
                "    \"UTF-8\">"
-               "    <title>onetwothreefour"
+               "    <title>"
+               "    onetwothreefour"
                "    five</title>"
                "  </head>"
                "</html>\n"))
 
-  (check-fmt "Tables wrap as expected"
+  (check-fmt 20 "Tables wrap as expected"
              '(table (thead (tr (td "Col 1") (td "Col 2") (td "Col 3")))
                      (tbody (tr (td "a") (td "b") (td "c"))))
              '("<table>"
@@ -428,7 +488,8 @@
                "  </tbody>"
                "</table>\n"))
 
-  (check-fmt 80 "Indentation consistent in the presence of additional whitespace elements"
+  (check-fmt 80
+             "Indentation consistent in the presence of additional whitespace elements"
              '(html ()
                     "\n  "
                     (head () "\n    "
@@ -451,14 +512,15 @@
                "    <div class=\"article\">"
                "      <article>"
                "        <h1>Minimal Post</h1>"
-               "        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas "
+               "        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas"
                "        nisi libero, scelerisque vel nulla eu, tristique porta metus.</p>"
                "      </article>"
                "    </div>"
                "  </body>"
                "</html>\n"))
 
-  (check-fmt 80 "Forms wrap as expected"
+  (check-fmt 80
+             "Forms wrap as expected"
              '(form ((accept-charset "utf-8")
                      (action "https://example.com/subscribe")
                      (class "row-form")
@@ -489,14 +551,14 @@
                "</form>\n"))
 
   ;; Broken HTML, not sure what to do with this
-  (define broken '(body (p (em "Hello " (div "World")) "woah")))
-  ;(logging-to-stderr (lambda () (display (->str broken))))
-
-
+  #;(debug '(body (p (em "Hello " (div "World")) "woah")))
+  
   ; self-closing tags display properly
   (for ([tag (in-list '(area base basefont br col frame hr img input isindex link meta param))])
-    (check-fmt (format "~a displays correctly as self-closing tag" tag)
+    (check-fmt 20
+               (format "~a displays correctly as self-closing tag" tag)
                `(,tag)
                (list (format "<~a>~a"
                              tag
-                             (if (or (block? tag) (flow? tag) (eq? tag 'br)) (sys-newline) ""))))))
+                             (if (or (block? tag) (flow? tag) (eq? tag 'br)) (sys-newline) "")))))
+  )
