@@ -42,7 +42,7 @@
 (define _tidy-path/param-or-cached
   (let ([tp #f])
     (define (maybe-executable p)
-      (and p
+      (and (non-empty-string? p)
            (file-exists? p)
            (member 'execute (file-or-directory-permissions p))
            p))
@@ -52,10 +52,12 @@
         [tp]
         [else
          (set! tp (or (maybe-executable (getenv "HTML_TIDY_PATH"))
-                      (find-executable-path "tidy")))
+                      (path->string (find-executable-path "tidy"))
+                      ""))
          tp]))))
 
-; 
+;; Zero-arity functions for getting the Tidy version & testing it for sufficiency
+;; Responses are cached; cache is invalidated when tidy-path parameter changes (guard function above)
 (define-values (get-tidy-version
                 tidy-version-sufficient?
                 _unset-tidy-version!)
@@ -78,14 +80,14 @@
          cmp]
         [(yes) #t]
         [(no) #f]))
-    (define (_unset!)
+    (define (_unset!) ; invalidate cache
       (set! tidy-version #f)
       (set! version-sufficient-flag #f))
     (values _getv _vs? _unset!)))
 
 (define (try-tidy-version-cmd)
   (match (_tidy-path/param-or-cached)
-    [(? string? tp)
+    [(? non-empty-string? tp)
      (with-output-to-string (lambda () (system (format "~a --version" tp))))]
     [_ #f]))
 
