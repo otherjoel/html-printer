@@ -7,6 +7,11 @@
           racket/system
           xml)
 
+;; Provides an interface to a stable release of HTML Tidy >= 5.8.0, if available on the local system.
+
+;; This module is primarily written for use with the html-writer testing harness.
+;; Use elsewhere at your own risk.
+
 (provide tidy-path
          tidy-options
          get-tidy-version
@@ -50,11 +55,12 @@
                       (find-executable-path "tidy")))
          tp]))))
 
+; 
 (define-values (get-tidy-version
                 tidy-version-sufficient?
                 _unset-tidy-version!)
   (let ([tidy-version #f]
-        [version-sufficient-flag #f])
+        [version-sufficient-flag #f]) ; #f if not yet checked; 'yes or 'no otherwise
     (define (_getv)
       (cond
         [tidy-version]
@@ -65,7 +71,9 @@
     (define (_vs?)
       (case version-sufficient-flag
         [(#f)
-         (define cmp (version>=? (_getv) minimum-tidy-version))
+         (define cmp
+           (and (version>=? (_getv) minimum-tidy-version)
+                (even? (minor-version tidy-version)))) ; even minor = stable release
          (set! version-sufficient-flag (if cmp 'yes 'no))
          cmp]
         [(yes) #t]
@@ -86,6 +94,7 @@
 ;;
 
 ;; X-expression → HTML string (output of HTML tidy)
+;;                or #f if a stable release of Tidy >= 5.8.0 is not available.
 ;;
 ;; The output inside the first matching #:extract-tag is returned.
 (define (tidy xp
