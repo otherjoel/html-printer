@@ -281,6 +281,11 @@
                           ['|writer result| (string-info (w/rule width my-result))]
                           ['|tidy output| (string-info (w/rule width tidy-result))])
           (fail-check)))))
+  
+  (if (tidy-version-sufficient?)
+    (eprintf "Test harness using HTML Tidy version ~a for comparison checks\n" (get-tidy-version))
+    (eprintf "No stable release of HTML Tidy >= ~a found, skipping Tidy comparison checks\n"
+             minimum-tidy-version))
 
   (check-fmt 20 "Naked strings work correctly" " Hi" '("Hi"))
   
