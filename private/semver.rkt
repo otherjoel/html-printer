@@ -4,7 +4,9 @@
          racket/match
          racket/string)
 
-(provide try-extract-version version>=?)
+(provide try-extract-version
+         version>=?
+         minor-version)
 
 (define (try-extract-version str)
   (and (string? str)
@@ -18,6 +20,9 @@
                                    (parse-semver-version ver2))
       [(or 0 1) #true]
       [_ #false])))
+
+(define (minor-version ver-str)
+  (SemverVersion-minor (parse-semver-version ver-str)))
 
 ;; Stripped-down non-typed version of Alexis King's semver package.
 ;; Dropped in here to avoid extra dependencies on semver and alexis-util.
