@@ -230,8 +230,20 @@
       (display-val proc v)
       (proc 'flush))))
 
-(define (w/rule str)
-  (string-append "\n----|----1----|----2----|----3----|\n"
+;; 25 → "----|----1----|----2----|"
+(define (rule n)
+  (list->string
+   (for/list ([i (in-range n)])
+     (define col (+ 1 i))
+     (cond
+       [(eqv? 0 (modulo col 10))
+        (integer->char (+ 48 (/ col 10)))] ; 48 = #\0
+       [(eqv? 0 (modulo col 5))
+        #\|]
+       [else #\-]))))        
+
+(define (w/rule width str)
+  (string-append "\n" (rule (+ width 15)) "\n"
                  (string-replace str " " "·")))
 
 (define (debug v #:wrap [wrap 20])
@@ -246,7 +258,7 @@
 
   ;; Nice for visual checks
   (define (disp v)
-    (displayln "----|----1----|----2----|----3----|")
+    (displayln (rule 35))
     (display (xexpr->html5 v #:wrap 20)))
 
   (define-check (check-fmt width msg xpr strs)
@@ -254,8 +266,8 @@
     (define standard (string-join strs (sys-newline)))
     (unless (equal? my-result standard)
       (with-check-info (['message (string-info msg)]
-                        ['|writer result| (string-info (w/rule my-result))]
-                        ['expected (string-info (w/rule standard))])
+                        ['|writer result| (string-info (w/rule width my-result))]
+                        ['expected (string-info (w/rule width standard))])
         (fail-check))))
 
   (define-check (check-matches-tidy? width x)
@@ -263,8 +275,8 @@
     (define tidy-result (string-append (tidy x #:wrap width) "\n"))
     (unless (equal? my-result tidy-result)
       (with-check-info (['message (string-info "writer result does not match expected tidy output")]
-                        ['|writer result| (string-info (w/rule my-result))]
-                        ['|tidy output| (string-info (w/rule tidy-result))])
+                        ['|writer result| (string-info (w/rule width my-result))]
+                        ['|tidy output| (string-info (w/rule width tidy-result))])
         (fail-check))))
 
   (check-fmt 20 "Naked strings work correctly" " Hi" '("Hi"))
