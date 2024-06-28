@@ -247,7 +247,7 @@
                  (string-replace str " " "·")))
 
 (define (debug v #:wrap [wrap 20])
-  (display (w/rule (logging-to-stderr (lambda () (xexpr->html5 v #:wrap wrap))))))
+  (display (w/rule wrap (logging-to-stderr (lambda () (xexpr->html5 v #:wrap wrap))))))
 
 (module+ test
   (require "private/tidy.rkt"
