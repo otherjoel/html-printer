@@ -14,19 +14,33 @@
          tidy
          xpr)
 
+;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+;; Public parameters
+;;
+
 (define minimum-tidy-version "5.8.0")
 (define tidy-path (make-parameter #f (λ (v) (_unset-tidy-version!) v)))
 (define tidy-options (make-parameter "-quiet -indent --wrap-attributes no --tidy-mark no"))
 
-(define (maybe-executable p)
-  (and p
-       (file-exists? p)
-       (member 'execute (file-or-directory-permissions p))
-       p))
+;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+;; HTML Tidy commands and version checks
+;;
 
-; If (tidy-path) is non-false and points to an existing executable
+;; Return the first one of
+;;  • tidy-path (parameter)
+;;  • cached path from previous result
+;;  • HTML_TIDY_PATH environment variable
+;;  • "tidy" executable on system PATH
+;;
+;; …that points to an existing file for which the user has execute permissions.
+;;
 (define _tidy-path/param-or-cached
   (let ([tp #f])
+    (define (maybe-executable p)
+      (and p
+           (file-exists? p)
+           (member 'execute (file-or-directory-permissions p))
+           p))
     (lambda ()
       (cond
         [(maybe-executable (tidy-path))]
@@ -67,14 +81,13 @@
      (with-output-to-string (lambda () (system (format "~a --version" tp))))]
     [_ #f]))
 
-(define (tidy/raw [xp '(p "a")] [wrap-col 100])
-  (define tp (_tidy-path/param-or-cached))
-  (define opts (format "~a --wrap ~a" (tidy-options) wrap-col))
-  (parameterize ([current-input-port (open-input-string (htmlify xp))])
-    (with-output-to-string
-      (lambda ()
-        (system (format "~a ~a" tp opts))))))
+;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+;; HTML Tidy interface
+;;
 
+;; X-expression → HTML string (output of HTML tidy)
+;;
+;; The output inside the first matching #:extract-tag is returned.
 (define (tidy xp
               #:extract-tag [tag (or (and (eq? 'head (car xp)) 'head) 'body)]
               #:wrap [wrap-col 100])
@@ -91,10 +104,17 @@
      (car (regexp-match (regexp (format "(<~a>.+</~a>)" tag tag)) result))]
     [else #f]))
 
+;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+;; HTML Tidy private utilities
+;;
+
+;; Clothe an x-expression in a <head> or <body> tag if it doesn't already
+;; start with one of those tags.
 (define (xpr x)
   (or (and (member (car x) '(head body)) x)
       `(body (main (article ,x)))))
 
+;; Tidy likes to operate on complete HTML5 documents.
 (define (htmlify x)
   (case (car x)
     [(head)
