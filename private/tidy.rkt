@@ -15,6 +15,7 @@
 (provide tidy-path
          tidy-options
          get-tidy-version
+         minimum-tidy-version
          tidy-version-sufficient?
          tidy
          xpr)
