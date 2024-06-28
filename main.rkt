@@ -270,14 +270,17 @@
                         ['expected (string-info (w/rule width standard))])
         (fail-check))))
 
+  ;; Check the writer's result against the output of HTML Tidy.
+  ;; If a sufficiently new version of HTML Tidy is not installed, check passes.
   (define-check (check-matches-tidy? width x)
-    (define my-result (xexpr->html5 (xpr x) #:wrap width))
-    (define tidy-result (string-append (tidy x #:wrap width) "\n"))
-    (unless (equal? my-result tidy-result)
-      (with-check-info (['message (string-info "writer result does not match expected tidy output")]
-                        ['|writer result| (string-info (w/rule width my-result))]
-                        ['|tidy output| (string-info (w/rule width tidy-result))])
-        (fail-check))))
+    (when (tidy-version-sufficient?)
+      (define my-result (xexpr->html5 (xpr x) #:wrap width))
+      (define tidy-result (string-append (tidy x #:wrap width) "\n"))
+      (unless (equal? my-result tidy-result)
+        (with-check-info (['message (string-info "writer result does not match expected tidy output")]
+                          ['|writer result| (string-info (w/rule width my-result))]
+                          ['|tidy output| (string-info (w/rule width tidy-result))])
+          (fail-check)))))
 
   (check-fmt 20 "Naked strings work correctly" " Hi" '("Hi"))
   
@@ -333,11 +336,11 @@
   ; Block and inline elements as siblings
 
   (check-fmt 20 "Escape < > & in string elements, and < > & \" in attributes"
-               '(span [[x "<\">&"]] "Symbols < \" > &")
-               '("<span x="
-                 "\"&lt;&quot;&gt;&amp;\">"
-                 "Symbols &lt; \" &gt;"
-                 "&amp;</span>"))
+             '(span [[x "<\">&"]] "Symbols < \" > &")
+             '("<span x="
+               "\"&lt;&quot;&gt;&amp;\">"
+               "Symbols &lt; \" &gt;"
+               "&amp;</span>"))
   
   #;(check-matches-tidy? 20 '(span [[x "<\">&"]] "Symbols < \" > &"))
 
@@ -407,10 +410,10 @@
   ;; Not passing yet! requires looking ahead before printing opening <i>
   
   (check-fmt 20 "allow wrap between inline elements when first ends in whitespace"
-               '(p (span "one two three ") (i "four"))
-               '("<p><span>one two"
-                 "three </span><i>"
-                 "four</i></p>\n"))
+             '(p (span "one two three ") (i "four"))
+             '("<p><span>one two"
+               "three </span><i>"
+               "four</i></p>\n"))
 
   #;(check-matches-tidy? 20 '(p (span "one two three ") (i "four")))
   
