@@ -108,7 +108,8 @@
 
 (define (display-val yeet! v [prev-token 'normal] #:in-inline? [inside-inline? #f])
   (match v
-    [(list (and (? symbol?) (? br?)))
+    [(? null?) prev-token]
+    [(list* (and (? symbol?) (? br?)) _)
      (log-debug "[prev ~a] br" prev-token)
      (yeet! '(put/wrap "<br>") 'flush 'break/indent)
      'flow-opened] ; hacky
@@ -359,7 +360,7 @@
              '("<p>one<br>"
                "two three four five"
                "six</p>\n"))
-
+  
   #;(check-matches-tidy? 20 '(p "one" (br) "two three four five six"))
 
   (check-fmt 20 "linebreaks not inserted where they would introduce whitespace (following inline tag close)"
@@ -471,6 +472,21 @@
              '("<div>"
                "  <pre>&mdash;&#20;</pre>"
                "</div>\n"))
+
+  (check-fmt 20 "Handle empty attribute lists, esp. in <br> tags (Koyo/HAML)"
+             '(body ()
+                    (header ()
+                            (h1 () "Title")
+                            (p () "a"
+                               (br ())
+                               "b")))
+             '("<body>"
+               "  <header>"
+               "    <h1>Title</h1>"
+               "    <p>a<br>"
+               "    b</p>"
+               "  </header>"
+               "</body>\n"))
   
   (check-fmt 20 "<head> wraps/indents correctly"
              '(html (head (link [[rel "stylesheet"] [href "style.css"]])
