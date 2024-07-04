@@ -1,6 +1,7 @@
 #lang racket/base
 
-(require racket/match)
+(require racket/match
+         xml)
 
 (provide whitespace?
          linebreak?
@@ -33,7 +34,9 @@
   (cond
     [(string? v) v]
     [(symbol? v) (format "&~a;" v)]
-    [(exact-positive-integer? v) (format "&#~a;" v)]))
+    [(exact-positive-integer? v) (format "&#~a;" v)]
+    [(null? v) ""]
+    [(xexpr? v) (xexpr->string v)]))
 
 (module+ test
   (require rackunit)

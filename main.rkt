@@ -467,6 +467,12 @@
                "    three</pre>"
                "</div>\n"))
 
+  (check-fmt 20 "Pre tags handle contained xexprs"
+             '(div (pre "Hello " (i "World")))
+             '("<div>"
+               "  <pre>Hello <i>World</i></pre>"
+               "</div>\n"))
+
   (check-fmt 20 "Symbols and integers inside pre/script converted to entities"
              '(div (pre mdash 20))
              '("<div>"
