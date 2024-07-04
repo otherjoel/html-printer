@@ -4,6 +4,7 @@
 
 (provide whitespace?
          linebreak?
+         ->string
          newline-convention
          sys-newline
          escape
@@ -26,6 +27,13 @@
 ;; Test if a string consists only of \r or \n.
 (define (linebreak? s)
   (regexp-match? #rx"^[\r\n]+$" s))
+
+;; Coerce to string; as HTML entity when necessary
+(define (->string v)
+  (cond
+    [(string? v) v]
+    [(symbol? v) (format "&~a;" v)]
+    [(exact-positive-integer? v) (format "&#~a;" v)]))
 
 (module+ test
   (require rackunit)

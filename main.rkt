@@ -210,16 +210,10 @@
        [(or (not (whitespace? last-word)) (= 1 count)) 'sticky]
        [else 'normal])]
 
-    [(? symbol? s)
-     (log-debug "[prev ~a] symbol ~a" prev-token s)
-     (define out-str (format "&~a;" s))
-     (yeet! `(,(if (sticky? prev-token) 'put 'put/wrap) ,out-str))
-     'sticky]
-    
-    [(? exact-positive-integer? i)
-     (log-debug "[prev ~a] integer ~a" prev-token i)
-     (define out-str (format "&#~a;" i))
-     (yeet! `(,(if (sticky? prev-token) 'put 'put/wrap) ,out-str))
+    [(or (? symbol? v)
+         (? exact-positive-integer? v))
+     (log-debug "[prev ~a] ~a" prev-token v)
+     (yeet! `(,(if (sticky? prev-token) 'put 'put/wrap) ,v))
      'sticky]
     ))
 
@@ -470,6 +464,12 @@
                "one"
                "  two  "
                "    three</pre>"
+               "</div>\n"))
+
+  (check-fmt 20 "Symbols and integers inside pre/script converted to entities"
+             '(div (pre mdash 20))
+             '("<div>"
+               "  <pre>&mdash;&#20;</pre>"
                "</div>\n"))
   
   (check-fmt 20 "<head> wraps/indents correctly"
