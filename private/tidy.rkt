@@ -53,8 +53,8 @@
         [tp]
         [else
          (set! tp (or (maybe-executable (getenv "HTML_TIDY_PATH"))
-                      (path->string (find-executable-path "tidy"))
-                      ""))
+                      (match (find-executable-path "tidy")
+                        [(? path? p) (path->string p)] [_ ""])))
          tp]))))
 
 ;; Zero-arity functions for getting the Tidy version & testing it for sufficiency
