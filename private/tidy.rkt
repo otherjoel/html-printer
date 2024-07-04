@@ -120,8 +120,7 @@
 ;; HTML Tidy private utilities
 ;;
 
-;; Clothe an x-expression in a <head> or <body> tag if it doesn't already
-;; start with one of those tags.
+;; Clothe an x-expression in a <body> tag if it looks like it needs one
 (define (xpr x)
   (or (and (member (car x) '(head body)) x)
       `(body (main (article ,x)))))
