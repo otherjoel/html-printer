@@ -78,7 +78,8 @@
       (set! col (+ 1 indent-level))
       (lop-accum-whsp-end! 'left))
 
-    (define (accumulate! str)
+    (define (accumulate! v)
+      (define str (->string v))
       (define whsp? (whitespace? str))
       (define len (string-grapheme-count str))
       (unless (or (equal? "" str)
@@ -87,14 +88,15 @@
         (set! accum-width (+ accum-width len))
         (log-debug "Accumulator now (~a + ~a): ~v" col accum-width accumulator)))
 
-    (define (accumulate/wrap! str)
+    (define (accumulate/wrap! v)
       (cond
-        [(> (+ col accum-width (string-grapheme-count str)) wrap-col)
+        [(> (+ col accum-width (string-grapheme-count v)) wrap-col)
          (flush-accumulator!)
-         (accumulate! str)]
-        [else (accumulate! str)]))
+         (accumulate! v)]
+        [else (accumulate! v)]))
 
-    (define (put! str)
+    (define (put! v)
+      (define str (->string v))
       (unless (whitespace? str) (set! logical-line-start #f))
       (set! col
             (for/fold ([c col])
