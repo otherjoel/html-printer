@@ -243,8 +243,10 @@
        [else #\-]))))        
 
 (define (w/rule width str)
-  (string-append "\n" (rule (+ width 15)) "\n"
-                 (string-replace str " " "·")))
+  (string-append (sys-newline) (rule (+ width 15)) (sys-newline)
+                 (string-replace
+                  (string-replace str " " "·")
+                  (sys-newline) (string-append "¶" (sys-newline)))))
 
 (define (debug v #:wrap [wrap 20])
   (display (w/rule wrap (logging-to-stderr (lambda () (xexpr->html5 v #:wrap wrap))))))
