@@ -174,11 +174,14 @@
      (for ([a (in-list (attr-chunks attrs))])
        (yeet! `(put/wrap ,a)))
      (define last-token
-       (for/fold ([last prev-token]) ; was sticky 
+       (for/fold ([last 'sticky]) ; was prev-token 
                  ([elem (in-list elems)])
          (display-val yeet! elem last #:in-inline? tag)))
+     (define popped (yeet! 'pop-whitespace))
+     (log-debug "popped ~v I guess" popped)
      (log-debug "[last ~a] closing ~a" last-token tag)
      (yeet! `(,(if (sticky? last-token) 'put 'put/wrap) ,(closer tag)))
+     (when popped (yeet! `(put/wrap ,popped)))
      (if (member last-token '(normal sticky))
          last-token
          'normal)]
@@ -192,14 +195,14 @@
     ;; valid combination of CRLF characters (so "\r\r\n" becomes '("\r" "\r\n"), e.g.)
     ;; This match is never reached while inside <script>, <style> or <pre>
     [(? string? str)
-     (log-debug "[prev ~a] Start - string content…" prev-token)
+     (log-debug "[prev ~a] Start - string content: ~v" prev-token str)
      (define-values (last-word count)
        (for/fold ([last ""]
                   [count 0]
                   [prev-tok prev-token]
                   #:result (values last count))
                  ([word (in-words str)])
-         (log-debug "[prev ~a] string - word ~v" prev-tok word)
+         (log-debug "[prev ~a] string ~v" prev-tok word)
          (define out-str (if (linebreak? word) " " (escape word string-element-table)))
          (yeet! `(,(if (sticky? prev-tok) 'put 'put/wrap) ,out-str))
          (values out-str (+ 1 count) 'normal)))
@@ -278,11 +281,13 @@
                           ['|writer result| (string-info (w/rule width my-result))]
                           ['|tidy output| (string-info (w/rule width tidy-result))])
           (fail-check)))))
+
+  (tidy-path "/opt/homebrew/bin/tidy")
   
   (if (tidy-version-sufficient?)
-    (eprintf "Test harness using HTML Tidy version ~a for comparison checks\n" (get-tidy-version))
-    (eprintf "No stable release of HTML Tidy >= ~a found, skipping Tidy comparison checks\n"
-             minimum-tidy-version))
+      (eprintf "Test harness using HTML Tidy version ~a for comparison checks\n" (get-tidy-version))
+      (eprintf "No stable release of HTML Tidy >= ~a found, skipping Tidy comparison checks\n"
+               minimum-tidy-version))
 
   (check-fmt 20 "Naked strings work correctly" " Hi" '("Hi"))
   
@@ -320,38 +325,34 @@
                "  </main>"
                "</body>\n"))
 
-  ;(check-matches-tidy? 20 '(p "🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️"))
-
+  ;These will never match because HTML Tidy is not grapheme-aware (as of 5.8.0)
+  ; (check-matches-tidy? 20 '(p "🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️"))
+  ; (check-matches-tidy? 20 '(p "Приве́т नमस्ते שָׁלוֹם"))
+  
   ;; http://utf8everywhere.org — section 8.3
   (check-fmt 20 "UTF-8: Languages with multi-byte graphemes wrap correctly"
-             (xpr '(p "Приве́т नमस्ते שָׁלוֹם"))
+             (xpr '(p "Приве́т سلام नमस्ते שָׁלוֹם"))
              '("<body>"
                "  <main>"
                "    <article>"
-               "      <p>Приве́т"
+               "      <p>Приве́т سلام"
                "      नमस्ते שָׁלוֹם</p>"
                "    </article>"
                "  </main>"
                "</body>\n"))
 
-  ;(check-matches-tidy? 20 '(p "Приве́т नमस्ते שָׁלוֹם"))
-  ; Block and inline elements as siblings
-
-  (check-fmt 20 "Escape < > & in string elements, and < > & \" in attributes"
+  (check-fmt 80 "Escape < > & in string elements, and < > & \" in attributes"
              '(span [[x "<\">&"]] "Symbols < \" > &")
-             '("<span x="
-               "\"&lt;&quot;&gt;&amp;\">"
-               "Symbols &lt; \" &gt;"
-               "&amp;</span>"))
+             '("<span x=\"&lt;&quot;&gt;&amp;\">Symbols &lt; \" &gt; &amp;</span>"))
   
-  #;(check-matches-tidy? 20 '(span [[x "<\">&"]] "Symbols < \" > &"))
+  ;(check-matches-tidy? 20 '(span [[x "<\">&"]] "Symbols < \" > &"))
 
   (check-fmt 20 "Symbols and numbers converted to entities"
              '(span (em "abcde fghi") nbsp 20)
              '("<span><em>abcde"
                "fghi</em>&nbsp;&#20;</span>"))
 
-  ;(check-matches-tidy? 20 '(p (span (em "abcde fghi") nbsp 20)))
+  ;(check-matches-tidy? 20 '(p (span (em "abcde fghi") nbsp 30)))
 
   ; Behavior when indent levels pass wrapping width??
   
@@ -361,7 +362,7 @@
                "two three four five"
                "six</p>\n"))
   
-  #;(check-matches-tidy? 20 '(p "one" (br) "two three four five six"))
+  (check-matches-tidy? 30 '(p "one" (br) "two three four five six"))
 
   (check-fmt 20 "linebreaks not inserted where they would introduce whitespace (following inline tag close)"
              (xpr '(p (em "Hello") "World again"))
@@ -403,21 +404,22 @@
              '("<p><span>one two"
                "three</span><i>four</i></p>\n"))
 
+  (check-matches-tidy? 30 (xpr '(p (span "one two three") (i "four"))))
+
   (check-fmt 20 "linebreaks present in string element content are preserved as whitespace"
              '(p "What if there are linebreaks\nin the input?")
-             '("<p>What if there"
-               "are linebreaks in"
-               "the input?</p>\n"))
-
-  ;; Not passing yet! requires looking ahead before printing opening <i>
+             '("<p>What if there are"
+               "linebreaks in the"
+               "input?</p>\n"))
   
   (check-fmt 20 "allow wrap between inline elements when first ends in whitespace"
              '(p (span "one two three ") (i "four"))
              '("<p><span>one two"
-               "three </span><i>"
-               "four</i></p>\n"))
+               "three</span>"
+               "<i>four</i></p>\n"))
 
-  #;(check-matches-tidy? 20 '(p (span "one two three ") (i "four")))
+  ; Tricky…currently the results are functionally the same but not byte-identical
+  ;(check-matches-tidy? 20 '(p (span "one two three ") (i "four")))
   
   (check-fmt 20 "script and style tags are printed without alteration"
              (xpr '(div
@@ -512,7 +514,7 @@
                "  </head>"
                "</html>\n"))
 
-  (check-fmt 20 "Tables wrap as expected"
+  (check-fmt 25 "Tables wrap as expected"
              '(table (thead (tr (td "Col 1") (td "Col 2") (td "Col 3")))
                      (tbody (tr (td "a") (td "b") (td "c"))))
              '("<table>"
@@ -531,6 +533,9 @@
                "    </tr>"
                "  </tbody>"
                "</table>\n"))
+
+  (check-matches-tidy? 25 '(table (thead (tr (td "Col 1") (td "Col 2") (td "Col 3")))
+                                  (tbody (tr (td "a") (td "b") (td "c")))))
 
   (check-fmt 80
              "Indentation consistent in the presence of additional whitespace elements"

@@ -10,17 +10,22 @@
          sys-newline
          escape
          string-element-table
-         attribute-table)
+         attribute-table
+         breakpoint
+         (rename-out [_bp? breakpoint?]))
+
+(struct _bp ())
+(define breakpoint (_bp))
 
 (define newline-convention (make-parameter (system-type)))
 
 (define (sys-newline)
   (if (eq? (newline-convention) 'windows) "\r\n" "\n"))
 
-;; Test if a string consists entirely of whitespace.
+;; Predicate returning true if val is a string consisting entirely of whitespace (or nothing).
 ;; NB: A non-breaking space is not counted as whitespace.
-(define (whitespace? s)
-  (match s
+(define (whitespace? v)
+  (match v
     ["" #t]
     [(pregexp #px"^[\\s]+$") #t]
     [_ #f]))
