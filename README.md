@@ -30,21 +30,15 @@ Still in early stages, comments and PRs welcome.
 See the tests at the end of main.rkt to get an idea of what it can do so far.  The tests that are
 there are passing at this point. Lots to do though:
 
-- Add many more tests
-- Add lookahead (or deferred output) for smarter wrapping (see [this
-  test](https://github.com/otherjoel/html-writer/blob/8ad22632d46bc6c413f271436fea9974ce6c331a/main.rkt#L312-L317))
-- Defer whitespace to avoid trailing spaces on lines (update tests first)
-- Compare classification of “block” and “flow” tags against the HTML5 standard
-- Thoroughly compare output against HTML Tidy
+- [x] ~~Add many more tests~~
+- [x] ~~Add lookahead (or deferred output) for smarter wrapping~~
+- [x] ~~Defer whitespace to avoid trailing spaces on lines (update tests first)~~
+- [x] ~~Thoroughly compare output against HTML Tidy~~
 - Add option to self-close tags the XHTML way (`/>`)
 - Split tests into their own files
 - Documentation
 
 ## Questions to resolve
-
-- How important is the Unicode/grapheme thing and what is the performance cost of using `in-words`
-  from `unicode-breaks`, as opposed to simply letting the wrapping be a little bit wrong when
-  multi-byte graphemes are present?
 
 - How much logging/debugging instrumentation should be left in? (Probably none except for errors,
   but see next question)
