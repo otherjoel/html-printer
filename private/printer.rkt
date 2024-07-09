@@ -2,9 +2,17 @@
 
 (require "strings.rkt"
          "log.rkt"
+         racket/match
          (only-in racket/syntax format-symbol)
-         racket/mutable-treelist
-         unicode-breaks)
+         unicode-breaks
+         (rename-in racket/mutable-treelist
+                    (mutable-treelist-first ~first)
+                    (mutable-treelist-last ~last)
+                    (mutable-treelist-add! ~add!)
+                    (mutable-treelist-take! ~take!)
+                    (mutable-treelist-drop! ~drop!)
+                    (mutable-treelist-drop-right! ~drop-right!)
+                    (mutable-treelist-empty? ~empty?)))
 
 (provide make-wrapping-printer)
 
@@ -19,49 +27,79 @@
         [accumulator (mutable-treelist)]) ; accumulator (list of strings not yet actually printed)
 
     (define (accum-empty?)
-      (mutable-treelist-empty? accumulator))
+      (or (~empty? accumulator)
+          (equal? accumulator (mutable-treelist breakpoint))))
 
-    (define (accum-end-is-whsp? which-end)
-      (and (not (accum-empty?))
+    (define (end-is-whsp? mtl which-end)
+      (and (not (~empty? mtl))
            (whitespace? ((if (eq? which-end 'right)
-                             mutable-treelist-last
-                             mutable-treelist-first)
-                         accumulator))))
+                             ~last
+                             ~first)
+                         mtl))))
 
-    (define (lop-accum-whsp-end! which-end)
+    (define (lop-whsp-end! mtl which-end)
       (cond
-        [(and (not (accum-empty?))
-              (accum-end-is-whsp? which-end))
+        [(end-is-whsp? mtl which-end)
          (define-values (tl-get tl-drop)
            (case which-end
-             [(left)  (values mutable-treelist-first mutable-treelist-drop!)]
-             [(right) (values mutable-treelist-last mutable-treelist-drop-right!)]))
-         (do () [(not (accum-end-is-whsp? which-end))]
-           (let ([last-len (string-grapheme-count (tl-get accumulator))])
-             (log-debug "accum width ~a - ~a (~a)" accum-width last-len which-end)
-             (set! accum-width (- accum-width last-len))
-             (tl-drop accumulator 1)))
-         #t]
+             [(left)  (values ~first ~drop!)]
+             [(right) (values ~last ~drop-right!)]))
+         (define lopped-width 0)
+         (do () [(not (end-is-whsp? mtl which-end))]
+           (set! lopped-width (+ lopped-width (string-grapheme-count (tl-get mtl))))
+           (tl-drop mtl 1))
+         lopped-width]
         [else #f]))
+    
+    (define (lop-accum-whsp-end! which-end)
+      (match (lop-whsp-end! accumulator which-end)
+        [(? number? lopped-len)
+         (log-debug "accum width ~a - ~a (~a)" accum-width lopped-len which-end)
+         (set! accum-width (- accum-width lopped-len))]
+        [_ #f]))
 
     (define (flush!)
       (unless (accum-empty?)
         (log-debug "flushing accumulator: ~v" accumulator)
         (define lopped? (lop-accum-whsp-end! 'right))
-        (for ([v (in-mutable-treelist accumulator)])
-          (display v outp)
-          (when (and logical-line-start (not (whitespace? v)))
-            (set! logical-line-start #f)))
-        (set! col (+ col accum-width))
+        (define buffer (mutable-treelist))
+        (define buf-width
+          (for/fold ([held-whsp? #f]
+                     [buffer-width 0]
+                     #:result buffer-width)
+                    ([v (in-mutable-treelist accumulator)])
+            (cond
+              [(breakpoint? v)
+               (log-debug "flush (held ~a) - at breakpoint, buffer (col ~a + width ~a) ~v" held-whsp? col buffer-width buffer)
+               (when (> (+ col buffer-width) wrap-col) (break+indent!))
+               (cond
+                 [(~empty? buffer) (values held-whsp? 0)]
+                 [else
+                  (log-debug "FLUSH held ~a, line start? ~a" held-whsp? logical-line-start)
+                  (when (and held-whsp? (not logical-line-start)) (put! " "))
+                  (for ([bv (in-mutable-treelist buffer)])
+                    (unless (and logical-line-start (whitespace? bv))
+                      (put! bv)))
+                  (~take! buffer 0)
+                  (values #f 0)])]
+              [(whitespace? v)
+               (log-debug "flush (held 1)")
+               (values 1 (+ 1 buffer-width))]
+              [else
+               (when held-whsp? (~add! buffer " "))
+               (~add! buffer v)
+               (log-debug "flush (held was ~a) - buffer now ~v" held-whsp? buffer)
+               (values #f (+ buffer-width (string-grapheme-count v)))])))
+        
+        (when (not (~empty? buffer))
+          (when (> (+ col buf-width) wrap-col) (break+indent!))
+          (for ([bv (in-mutable-treelist buffer)])
+            (unless (and logical-line-start (whitespace? bv)) (put! bv))))
+
         (set! accum-width 0)
-        (mutable-treelist-take! accumulator 0)
+        (~take! accumulator 0)
         (when (and lopped? (not logical-line-start))
           (accumulate! " "))))
-    
-    (define (flush-accumulator!)
-      (unless (accum-empty?)
-        (when (and (not logical-line-start) (> (+ col accum-width) wrap-col)) (break+indent!))
-        (flush!)))
         
     (define (break!)
       (log-debug "break!")
@@ -78,22 +116,21 @@
       (set! col (+ 1 indent-level))
       (lop-accum-whsp-end! 'left))
 
-    (define (accumulate! v)
+    (define (accumulate! v #:breakpoint-before? [breakpoint-before? #f])
       (define str (->string v))
       (define whsp? (whitespace? str))
       (define len (string-grapheme-count str))
       (unless (or (equal? "" str)
                   (and logical-line-start (accum-empty?) whsp?))
-        (mutable-treelist-add! accumulator str)
+        (when breakpoint-before? (~add! accumulator breakpoint))
+        (~add! accumulator str)
         (set! accum-width (+ accum-width len))
         (log-debug "Accumulator now (~a + ~a): ~v" col accum-width accumulator)))
 
     (define (accumulate/wrap! v)
-      (cond
-        [(> (+ col accum-width (string-grapheme-count v)) wrap-col)
-         (flush-accumulator!)
-         (accumulate! v)]
-        [else (accumulate! v)]))
+      (when (> (+ col accum-width (string-grapheme-count v)) wrap-col)
+        (flush!))
+      (accumulate! v #:breakpoint-before? #t))
 
     (define (put! v)
       (define str (->string v))
@@ -109,8 +146,8 @@
     
     (define proc
       (lambda args
-        (unless (null? args)
-          (define arg (car args))
+        (for/fold ([result (void)])
+                  ([arg (in-list args)])
           (case arg
             [(get-line-length) wrap-col]
             [(break)
@@ -118,9 +155,9 @@
             [(check/flush)
              (log-debug "check/flush, (+ ~a ~a) > ~a = ~a" col accum-width wrap-col
                         (> (+ col accum-width) wrap-col))
-             (when (> (+ col accum-width) wrap-col) (flush-accumulator!))]
+             (when (> (+ col accum-width) wrap-col) (flush!))]
             [(flush)
-             (flush-accumulator!)]
+             (flush!)]
             [(indent)
              (display (make-string indent-level #\space) outp)
              (set! col (+ col indent-level))]
@@ -143,6 +180,18 @@
              (log-debug "(break/--indent)")
              (set! indent-level (max 0 (- indent-level indent)))
              (break+indent!)]
+            [(pop-whitespace)
+             (cond
+               [(accum-empty?) #f]
+               [else
+                (log-debug "pop-whitespace - not empty…")
+                (match (~last accumulator)
+                  [(? whitespace? str)
+                   (log-debug "popping whitespace ~v" str)
+                   (~drop-right! accumulator 1)
+                   (set! accum-width (- accum-width (string-grapheme-count str)))
+                   str]
+                  [_ #f])])]
             [else
              (when (and (list? arg) (not (null? arg)) (not (null? (cdr arg))))
                (define-values (sym str) (values (car arg) (cadr arg)))
@@ -152,6 +201,5 @@
                     [(accum-empty?) (put! str)]
                     [else (accumulate! str)])]
                  [(put/wrap)
-                  (accumulate/wrap! str)]))])
-          (unless (null? (cdr args)) (apply proc (cdr args))))))
+                  (accumulate/wrap! str)]))]))))
     (procedure-rename proc (format-symbol "wrapping-printer[cols:~a,sp:~a]" wrap-col indent))))
