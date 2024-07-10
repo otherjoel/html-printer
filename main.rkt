@@ -8,7 +8,8 @@
          racket/port
          racket/string
          racket/symbol
-         unicode-breaks)
+         unicode-breaks
+         xml)
 
 (provide xexpr->html5)
 
@@ -213,12 +214,22 @@
         prev-token]
        [(or (not (whitespace? last-word)) (= 1 count)) 'sticky]
        [else 'normal])]
+    
+    [(? comment? c)
+     (yeet! '(put/wrap "<!--"))
+     (for ([str (in-words (comment-text c))])
+       (yeet! `(put/wrap ,str)))
+     (yeet! '(put/wrap "-->") 'flush)
+     (when (memq prev-token '(flow-opened flow-closed block-closed))
+       (yeet! 'break/indent))
+     prev-token]
 
     [(or (? symbol? v)
-         (? exact-positive-integer? v))
+         (? exact-positive-integer? v)
+         (? xexpr? v))
      (log-debug "[prev ~a] ~a" prev-token v)
      (yeet! `(,(if (sticky? prev-token) 'put 'put/wrap) ,v))
-     'sticky]
+     (if (or (symbol? v) (number? v)) 'sticky prev-token)]
     ))
 
 (define (xexpr->html5 v #:wrap [wrap 100])
@@ -598,6 +609,59 @@
                "  \"hidden\" value=\"yes\"><input id=\"submit\" name=\"submit\" type=\"submit\" value="
                "  \"Subscribe\">"
                "</form>\n"))
+
+  (check-fmt 20 "Comments wrap and indent properly inside flows and blocks"
+             `(body (main ,(comment "this is\na comment")
+                          (article (p "Hi" ,(comment "also another comment")))))
+             '("<body>"
+               "  <main>"
+               "    <!--this is a"
+               "    comment-->"
+               "    <article>"
+               "      <p>Hi<!--also"
+               "      another"
+               "      comment--></p>"
+               "    </article>"
+               "  </main>"
+               "</body>\n"))
+
+  (check-fmt 20 "Comments wrap intelligently inside block elements"
+             `(main (article (p "Hi " ,(comment "a comment") "hi")))
+             '("<main>"
+               "  <article>"
+               "    <p>Hi <!--a"
+               "    comment-->"
+               "    hi</p>"
+               "  </article>"
+               "</main>\n"))
+  
+  (check-fmt 20 "Comment wrapping does not introduce whitespace between otherwise-adjacent strings"
+             `(main (article (p "Hi" ,(comment "a comment") "hi")))
+             '("<main>"
+               "  <article>"
+               "    <p>Hi<!--a"
+               "    comment-->hi</p>"
+               "  </article>"
+               "</main>\n"))
+
+  (check-fmt 20 "CDATA printed unmodified"
+             `(main (article (p "Hi " ,(cdata #f #f "<![CDATA[Oṃ maṇi padme hūm̐]]>") "hi")))
+             '("<main>"
+               "  <article>"
+               "    <p>Hi"
+               "    <![CDATA[Oṃ maṇi padme hūm̐]]>"
+               "    hi</p>"
+               "  </article>"
+               "</main>\n"))
+
+  (check-fmt 20 "CDATA wrapping does not introduce whitespace between otherwise-adjacent strings"
+             `(main (article (p "Hi" ,(cdata #f #f "<![CDATA[Oṃ maṇi padme hūm̐]]>") "hi")))
+             '("<main>"
+               "  <article>"
+               "    <p>"
+               "    Hi<![CDATA[Oṃ maṇi padme hūm̐]]>hi</p>"
+               "  </article>"
+               "</main>\n"))
 
   ;; Broken HTML, not sure what to do with this
   #;(debug '(body (p (em "Hello " (div "World")) "woah")))

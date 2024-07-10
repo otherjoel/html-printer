@@ -128,9 +128,10 @@
         (log-debug "Accumulator now (~a + ~a): ~v" col accum-width accumulator)))
 
     (define (accumulate/wrap! v)
-      (when (> (+ col accum-width (string-grapheme-count v)) wrap-col)
+      (define str (->string v))
+      (when (> (+ col accum-width (string-grapheme-count str)) wrap-col)
         (flush!))
-      (accumulate! v #:breakpoint-before? #t))
+      (accumulate! str #:breakpoint-before? #t))
 
     (define (put! v)
       (define str (->string v))
