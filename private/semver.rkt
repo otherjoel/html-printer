@@ -8,6 +8,8 @@
          version>=?
          minor-version)
 
+(module+ test)
+
 (define (try-extract-version str)
   (and (string? str)
        (match (regexp-match semver-regex-anywhere str)

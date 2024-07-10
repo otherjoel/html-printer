@@ -4,6 +4,8 @@
 
 (provide (all-defined-out))
 
+(module+ test)
+
 (define-logger html-writer)
 
 (define (log-debug . items)
@@ -17,4 +19,3 @@
 
 (define (logging-to-stderr proc)
   (with-logging-to-port (current-error-port) proc #:logger html-writer-logger 'debug 'html-writer))
-

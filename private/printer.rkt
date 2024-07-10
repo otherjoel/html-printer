@@ -16,10 +16,11 @@
 
 (provide make-wrapping-printer)
 
+(module+ test)
+
 (define (make-wrapping-printer [outp (current-output-port)]
                                #:wrap-at [wrap-col 100]
                                #:indent-spaces [indent 2])
-  
   (let ([col 1]                   ; column of next char, counting actually-printed chars
         [indent-level 0]          ; indent level in columns
         [logical-line-start #t]   ; at "start"? (ignoring whitespace) counting actually-printed chars

@@ -20,6 +20,8 @@
          tidy
          xpr)
 
+(module+ test)
+
 ;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ;; Public parameters
 ;;
