@@ -128,8 +128,12 @@
      (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
        (yeet! `(put/wrap ,a)))
-     (for ([elem (in-list elems)])
-       (yeet! `(put ,elem)))
+     (case tag
+       [(script style)
+        (for ([elem (in-list elems)]) (yeet! `(put ,elem)))]
+       [(pre)
+        (for ([elem (in-list elems)])
+          (yeet! `(put ,(if (string? elem) (escape elem string-element-table) elem))))])
      (yeet! 'indent-if-col1
             `(put ,(closer tag))
             'break)

@@ -184,6 +184,13 @@
              "  </main>"
              "</body>\n"))
 
+(check-fmt 20 "No escaping inside script and style tags"
+           '(div (script "/* < > & */") (style "/* < > & */"))
+           '("<div>"
+             "  <script>/* < > & */</script>"
+             "  <style>/* < > & */</style>"
+             "</div>\n"))
+
 (check-fmt 20 "Pre tag contents preserved"
            '(div (pre "\none\n  two  \n    three"))
            '("<div>"
@@ -197,6 +204,12 @@
            '(div (pre "Hello " (i "World")))
            '("<div>"
              "  <pre>Hello <i>World</i></pre>"
+             "</div>\n"))
+
+(check-fmt 20 "Special characters inside pre tags escaped"
+           '(div (pre "< > &"))
+           '("<div>"
+             "  <pre>&lt; &gt; &amp;</pre>"
              "</div>\n"))
 
 (check-fmt 20 "Symbols and integers inside pre/script converted to entities"
