@@ -16,7 +16,7 @@
             thead tfoot tr ul))
 
 (define default-selfclose-tags
-  '(area base basefont br col frame hr img input isindex link meta param))
+  '(area base basefont br col embed frame hr img input isindex link meta param source track wbr))
 
 ;; https://html.spec.whatwg.org/multipage/indices.html#attributes-3
 (define html5-boolean-attrs
