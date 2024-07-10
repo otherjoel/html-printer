@@ -204,6 +204,10 @@
      (log-debug "[prev ~a] ~a" prev-token v)
      (yeet! `(,(if (sticky? prev-token) 'put 'put/wrap) ,v))
      (if (or (symbol? v) (number? v)) 'sticky prev-token)]
+    [_
+     (raise-arguments-error 'xexpr->html5
+                            "not a valid element (= txexpr, string, symbol, character integer, CDATA, or comment"
+                            "value" v)]
     ))
 
 (define (xexpr->html5 v #:wrap [wrap 100])

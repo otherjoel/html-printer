@@ -1,6 +1,7 @@
 #lang racket/base
 
-(require "private/test-util.rkt"
+(require "main.rkt"
+         "private/test-util.rkt"
          "private/tidy.rkt"
          "private/html-tags.rkt"
          "private/strings.rkt"
@@ -14,6 +15,10 @@
              minimum-tidy-version))
 
 (check-fmt 20 "Naked strings work correctly" " Hi" '("Hi"))
+
+(check-exn exn:fail:contract?
+           (λ () (xexpr->html5 `(div ,(void))))
+           "Invalid X-expression raises an exception")
   
 (check-fmt 20 "simple xexprs wrap correctly"
            (xpr '(p (em "Hello") " World"))
