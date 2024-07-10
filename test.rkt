@@ -341,6 +341,10 @@
              "  \"Subscribe\">"
              "</form>\n"))
 
+(check-fmt 80 "Whitespace preserved after inline element"
+           '(label (input [[type "checkbox"] [disabled ""]]) " Cheese")
+           '("<label><input type=\"checkbox\" disabled> Cheese</label>"))
+
 (check-fmt 20 "Comments wrap and indent properly inside flows and blocks"
            `(body (main ,(comment "this is\na comment")
                         (article (p "Hi" ,(comment "also another comment")))))

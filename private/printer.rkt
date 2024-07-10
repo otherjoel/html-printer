@@ -77,10 +77,10 @@
                  [(~empty? buffer) (values held-whsp? 0)]
                  [else
                   (log-debug "FLUSH held ~a, line start? ~a" held-whsp? logical-line-start)
-                  (when (and held-whsp? (not logical-line-start)) (put! " "))
                   (for ([bv (in-mutable-treelist buffer)])
                     (unless (and logical-line-start (whitespace? bv))
                       (put! bv)))
+                  (when (and held-whsp? (not logical-line-start)) (put! " "))
                   (~take! buffer 0)
                   (values #f 0)])]
               [(whitespace? v)
