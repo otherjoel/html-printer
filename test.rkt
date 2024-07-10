@@ -341,6 +341,10 @@
              "  \"Subscribe\">"
              "</form>\n"))
 
+(check-fmt 80 "Boolean attributes display properly using HTML5 short syntax"
+           '(label (input [[type "checkbox"] [disabled ""]]) "Cheese")
+           '("<label><input type=\"checkbox\" disabled>Cheese</label>"))
+
 (check-fmt 80 "Whitespace preserved after inline element"
            '(label (input [[type "checkbox"] [disabled ""]]) " Cheese")
            '("<label><input type=\"checkbox\" disabled> Cheese</label>"))
