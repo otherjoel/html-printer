@@ -35,6 +35,25 @@
                         ['|tidy output| (string-info (w/rule width tidy-result))])
         (fail-check)))))
 
+(define (compare/tidy! width x)
+  (cond
+    [(tidy-version-sufficient?)
+     (printf "Tidy ~a found\n" (get-tidy-version))
+     (define my-result (xexpr->html5 (xpr x) #:wrap width))
+     (define tidy-result (string-append (tidy x #:wrap width) "\n"))
+     (cond
+       [(equal? my-result tidy-result)
+        (printf "Results match:\n")
+        (display (w/rule width my-result))]
+       [else
+        (printf "Results do not match\nxexpr->html5 result:\n")
+        (display (w/rule width my-result))
+        (printf "Tidy result:\n")
+        (display (w/rule width tidy-result))])]
+    [else
+     (raise-user-error 'compare/tidy! "Tidy >= ~a not found in HTML_TIDY_PATH or PATH\n" minimum-tidy-version)]))
+        
+
 ;; 25 → "----|----1----|----2----|"
 (define (rule n)
   (list->string
