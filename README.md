@@ -1,35 +1,18 @@
-html-printer
-============
+`html-printer`
+==============
 
 A Racket library for converting X-expressions to strings of HTML with content-aware line wrapping
-and indentation.
+and indentation. Comments and PRs welcome. 
 
-Expected benefits of this library over [`xexpr->string`][1], [`xexpr->html`][2] and
-[`display-xml/content`][3]:
+**Documentation is at <https://joeldueck.com/what-about/html-printer**
 
-* Wraps and indents based on the tag type according to HTML5 standard (block/flow/inline) rather
-  than based on scanning a tag's contents
-* Allows you to set the column width of the output
-* Never inserts a line break where doing so would introduce whitespace in the HTML output
-* Attribute values are never broken across lines
-* Does not modify content of `<script>` and `<style>` tags
-* Unicode-aware: line wrapping measures line width using grapheme count vs. character count
-* Outputs boolean attributes the HTML5 way (`<option selected>` rather than `<option
-  selected="selected">`)
-* Outputs self-closing tags the HTML5 way (`<meta charset="UTF-8">`, note `>` to close rather than
-  `/>`)
+This package requires Racket 8.13 or higher.
 
-[1]: https://docs.racket-lang.org/xml/index.html#%28def._%28%28lib._xml%2Fmain..rkt%29._xexpr-~3estring%29%29
-[2]: https://docs.racket-lang.org/txexpr/index.html#%28def._%28%28lib._txexpr%2Fmain..rkt%29._xexpr-~3ehtml%29%29
-[3]: https://docs.racket-lang.org/xml/index.html#%28def._%28%28lib._xml%2Fmain..rkt%29._display-xml%2Fcontent%29%29
-[ub]: https://docs.racket-lang.org/unicode-breaks/index.html
+To install:
 
-Comments and PRs welcome. 
+    > raco pkg install html-printer
 
-See the tests in `test.rkt` to get an idea of what it can do.  The tests that are there are passing
-at this point.
-
-## Questions to resolve
+## Lingering questions…
 
 - How much logging/debugging instrumentation should be left in? (Probably none except for errors,
   but see next question)

@@ -8,3 +8,4 @@ compiled/
 *.js
 *.css
 *.html
+makefile
