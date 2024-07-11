@@ -6,6 +6,7 @@
 (provide whitespace?
          linebreak?
          ->string
+         words
          newline-convention
          sys-newline
          escape
@@ -27,12 +28,15 @@
 (define (whitespace? v)
   (match v
     ["" #t]
-    [(pregexp #px"^[\\s]+$") #t]
+    [(pregexp #px"^\\s+$") #t]
     [_ #f]))
 
 ;; Test if a string consists only of \r or \n.
 (define (linebreak? s)
   (regexp-match? #rx"^[\r\n]+$" s))
+
+(define (words s)
+  (regexp-match* #px"(?:\\s+|\\S+)" s))
 
 ;; Coerce to string; as HTML entity when necessary
 (define (->string v)
@@ -56,6 +60,14 @@
   (check-true (linebreak? "\r\n") "carriage returns and newlines are line breaks")
   (check-true (linebreak? "\r\r\n\r\n\n") "CR and LF in any amount and order are line breaks")
   (check-false (linebreak? " \r\n") "any non-CRLF character disqualifies string as a line break")
+
+  (check-equal? (words "This is one, this is another...")
+                '("This" " " "is" " " "one," " " "this" " " "is" " " "another..."))
+  (check-equal? (words "Must pick/choose") '("Must" " " "pick/choose"))
+  (check-equal? (words "object.method()") '("object.method()"))
+  (check-equal? (words ".method()   \t ;") '(".method()" "   \t " ";"))
+  (check-equal? (words "wow! 5% #hashtag joe@mail.com this^^^")
+                '("wow!" " " "5%" " " "#hashtag" " " "joe@mail.com" " " "this^^^"))
   )
 
 ;;

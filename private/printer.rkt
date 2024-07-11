@@ -4,7 +4,6 @@
          "log.rkt"
          racket/match
          (only-in racket/syntax format-symbol)
-         unicode-breaks
          (rename-in racket/mutable-treelist
                     (mutable-treelist-first ~first)
                     (mutable-treelist-last ~last)
@@ -139,7 +138,7 @@
       (unless (whitespace? str) (set! logical-line-start #f))
       (set! col
             (for/fold ([c col])
-                      ([w (in-words str)])
+                      ([w (in-list (words str))])
               (display w outp)
               (cond [(linebreak? w)
                      (set! logical-line-start #t)

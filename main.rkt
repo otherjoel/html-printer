@@ -6,7 +6,6 @@
          "private/printer.rkt"
          racket/match
          racket/port
-         unicode-breaks
          xml)
 
 (provide xexpr->html5)
@@ -176,7 +175,7 @@
                   [count 0]
                   [prev-tok prev-token]
                   #:result (values last count))
-                 ([word (in-words str)])
+                 ([word (in-list (words str))])
          (log-debug "[prev ~a] string ~v" prev-tok word)
          (define out-str (if (linebreak? word) " " (escape word string-element-table)))
          (yeet! `(,(if (sticky? prev-tok) 'put 'put/wrap) ,out-str))
@@ -191,7 +190,7 @@
     
     [(? comment? c)
      (yeet! '(put/wrap "<!--"))
-     (for ([str (in-words (comment-text c))])
+     (for ([str (in-list (words (comment-text c)))])
        (yeet! `(put/wrap ,str)))
      (yeet! '(put/wrap "-->") 'flush)
      (when (memq prev-token '(flow-opened flow-closed block-closed))
