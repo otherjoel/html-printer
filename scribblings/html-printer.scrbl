@@ -12,7 +12,7 @@
 @(define examps (make-base-eval #:lang 'racket/base))
 @(examps '(require html-printer html-printer/debug txexpr xml))
 
-@title{HTML5 Printer}
+@title[#:style 'toc]{HTML5 Printer}
 @author{Joel Dueck}
 
 @defmodule[html-printer]
@@ -115,8 +115,8 @@ ended with @litchar{>} (rather than with @litchar{/>} as in XML):
 @subsection{Comparing with included Racket functions}
 
 Racket already includes a few functions for printing X-expressions in string form. These work just
-fine generic XML markup; but for use as HTML content, the markup they generate can be incorrect or
-suboptimal.
+fine for generic XML markup; but for use as HTML content, the markup they generate can be incorrect
+or suboptimal.
 
 In particular, all three of these functions will escape @litchar{<}, @litchar{>} and @litchar{&}
 characters inside @racketoutput{<script>} and @racketoutput{<style>} tags, which is likely to
