@@ -10,8 +10,8 @@
 (provide check-fmt)
   
 (if (tidy-version-sufficient?)
-    (eprintf "Test harness using HTML Tidy version ~a for comparison checks\n" (get-tidy-version))
-    (eprintf "No stable release of HTML Tidy >= ~a found, skipping Tidy comparison checks\n"
+    (printf "Test harness using HTML Tidy version ~a for comparison checks\n" (get-tidy-version))
+    (printf "No stable release of HTML Tidy >= ~a found, skipping Tidy comparison checks\n"
              minimum-tidy-version))
 
 (check-fmt 20 "Naked strings work correctly" " Hi" '("Hi"))
