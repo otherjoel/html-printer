@@ -1,7 +1,7 @@
 #lang info
 (define collection "html-printer")
 (define deps '("rackunit-lib"
-               "base"))
+               ["base" #:version "8.13"]))
 (define build-deps '("txexpr"
                      "scribble-lib" "racket-doc" "rackunit-lib"))
 (define scribblings '(("scribblings/html-printer.scrbl" ())))
