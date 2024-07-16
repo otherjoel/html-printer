@@ -10,19 +10,19 @@
 
 (module+ test)
 
-(define-logger html-writer)
+(define-logger html-printer)
 
 (define (log-debug . items)
-  (log-html-writer-debug (apply format items)))
+  (log-html-printer-debug (apply format items)))
 
 (define (log-err . items)
-  (log-html-writer-error (apply format items)))
+  (log-html-printer-error (apply format items)))
 
 (define (log-msg . items)
-  (log-html-writer-info (apply format items)))
+  (log-html-printer-info (apply format items)))
 
 (define (logging-to-stderr proc)
-  (with-logging-to-port (current-error-port) proc #:logger html-writer-logger 'debug 'html-writer))
+  (with-logging-to-port (current-error-port) proc #:logger html-printer-logger 'debug 'html-printer))
 
 (define-syntax (log-op stx)
   (syntax-case stx ()
