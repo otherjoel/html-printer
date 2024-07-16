@@ -260,7 +260,8 @@
            '(html (head (link [[rel "stylesheet"] [href "style.css"]])
                         (meta [[charset "UTF-8"]])
                         (title "onetwothreefour five")))
-           '("<html>"
+           '("<!DOCTYPE html>"
+             "<html>"
              "  <head>"
              "    <link rel="
              "    \"stylesheet\" "
@@ -278,7 +279,8 @@
                   '(html (head (link [[rel "stylesheet"] [href "style.css"]])
                                (meta [[charset "UTF-8"]])
                                (title "onetwothreefour five")))
-                  '("<html>"
+                  '("<!DOCTYPE html>"
+                    "<html>"
                     "  <head>"
                     "    <link rel=\"stylesheet\" href=\"style.css\">"
                     "    <meta charset=\"UTF-8\">"
@@ -398,7 +400,8 @@
                                          "tristique porta metus.")))
                         "\n  ")
                   "\n")
-           '("<html>"
+           '("<!DOCTYPE html>"
+             "<html>"
              "  <head>"
              "    <title>Minimal Post</title>"
              "  </head>"

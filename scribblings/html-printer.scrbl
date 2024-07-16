@@ -55,6 +55,12 @@ Requires Racket 8.13 or later due to internal use of @racketmodname[racket/mutab
                             (footer
                              (div (p "Right here in River City"))))))]
 
+ If @racket[_xpr] begins with @racket['html], then the HTML5 doctype is prepended to the document:
+
+ @examples[#:eval examps
+           (display
+            (xexpr->html5 '(html (head (meta [[charset "UTF-8"]])))))]
+
  If @racket[_add-breaks?] is not @racket[#f], additional line breaks will be added between closing 
  block/flow tags (except for @racketoutput{<meta>}, @racketoutput{<link>} and @racketoutput{<title>})
  and any opening tags:

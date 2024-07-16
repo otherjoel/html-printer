@@ -235,6 +235,8 @@
 (define (xexpr->html5 v #:wrap [wrap 100] #:add-breaks? [add-breaks? #f])
   (with-output-to-string
     (λ ()
+      (when (and (list? v) (symbol? (car v)) (eq? 'html (symbol-downcase (car v))))
+        (displayln "<!DOCTYPE html>"))
       (define proc (make-wrapping-printer #:wrap-at wrap))
       (parameterize ([break-after-block? add-breaks?])
         (display-val proc v))
