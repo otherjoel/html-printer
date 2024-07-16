@@ -36,7 +36,7 @@
   (regexp-match? #rx"^[\r\n]+$" s))
 
 (define (words s)
-  (regexp-match* #px"(?:\\s+|\\S+)" s))
+  (regexp-match* #px"(?:\r\n|\n|\r|\\s+|\\S+)" s))
 
 ;; Coerce to string; as HTML entity when necessary
 (define (->string v)
@@ -68,6 +68,8 @@
   (check-equal? (words ".method()   \t ;") '(".method()" "   \t " ";"))
   (check-equal? (words "wow! 5% #hashtag joe@mail.com this^^^")
                 '("wow!" " " "5%" " " "#hashtag" " " "joe@mail.com" " " "this^^^"))
+  (check-equal? (words "\r\n\n\r\r\n\rHello World\nFoo")
+                '("\r\n" "\n" "\r" "\r\n" "\r" "Hello" " " "World" "\n" "Foo"))
   )
 
 ;;
