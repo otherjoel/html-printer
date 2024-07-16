@@ -29,7 +29,7 @@ difference from the input. It favors HTML5 syntax over XML syntax in some cases.
 
 This package is also Unicode-aware, measuring line length in graphemes rather than characters. So,
 for example the emoji 🧝‍♂️ — which actually consists of four Unicode “characters” — is counted
-    as having length 1 rather than 4.
+as having length 1 rather than 4.
 
 If you encounter a bug, please open an issue on
 @hyperlink["https://github.com/otherjoel/html-printer"]{the GitHub repo}.
@@ -38,9 +38,9 @@ Requires Racket 8.13 or later due to internal use of @racketmodname[racket/mutab
 
 @defproc[(xexpr->html5 [xpr xexpr?] [#:wrap wrap-col exact-positive-integer? 100]) string?]{
 
-Converts @racket[_xpr] to a string of HTML, nicely wrapped and indented, ready for consumption.
-Leave @racket[_wrap-col] at its default of 100 columns, or shrink it down hard to test the
-line-wrapping algorithm.
+ Converts @racket[_xpr] to a string of HTML, nicely wrapped and indented, ready for consumption.
+ Leave @racket[_wrap-col] at its default of 100 columns, or shrink it down hard to test the
+ line-wrapping algorithm.
 
  @examples[#:eval examps
            (display
@@ -57,7 +57,7 @@ That’s all there is to it, really. But if you want more info, check out the @s
 @section[#:tag "deets"]{Crunchy details}
 
 This package includes @hyperlink["https://github.com/otherjoel/html-printer/blob/main/test.rkt"]{an
-extensive set of unit tests}. In addition to preventing regressions, these nicely illustrate the
+ extensive set of unit tests}. In addition to preventing regressions, these nicely illustrate the
 printer’s expected behavior in a variety of edge cases.
 
 @subsection{HTML particulars}
@@ -96,21 +96,21 @@ and indented like everything else. CDATA content is never modified or escaped.
 
 @bold{Differences from XML/XHTML:} Attributes which
 @hyperlink["https://html.spec.whatwg.org/multipage/indices.html#attributes-3"]{the HTML5 spec
-identifies as boolean attributes} are printed using the HTML5 “short” syntax. So, for example when
+ identifies as boolean attributes} are printed using the HTML5 “short” syntax. So, for example when
 @code{'(disabled "true")} is supplied as an attribute, it is printed as @racketoutput{disabled}
 rather than @racketoutput{disabled=""} or @racketoutput{disabled="disabled"}.
 
- @examples[#:eval examps #:label #f
-           (display
-            (xexpr->html5 '(label (input [[type "checkbox"] [disabled ""]]) " Cheese")))]
+@examples[#:eval examps #:label #f
+          (display
+           (xexpr->html5 '(label (input [[type "checkbox"] [disabled ""]]) " Cheese")))]
 
 HTML elements which cannot have content
 (@hyperlink["https://developer.mozilla.org/en-US/docs/Glossary/Void_element"]{void elements}) are
 ended with @litchar{>} (rather than with @litchar{/>} as in XML):
 
- @examples[#:eval examps #:label #f
-           (display (xexpr->html5 '(div (img [[src "cat.webp"]]))))
-           (display (xexpr->html5 '(head (meta [[charset "UTF-8"]]))))]
+@examples[#:eval examps #:label #f
+          (display (xexpr->html5 '(div (img [[src "cat.webp"]]))))
+          (display (xexpr->html5 '(head (meta [[charset "UTF-8"]]))))]
 
 @subsection{Comparing with included Racket functions}
 
@@ -124,8 +124,8 @@ introduce JavaScript and CSS errors.
 
 The @racket[xexpr->string] function is the simplest. It does not offer line wrapping or indentation:
 
- @examples[#:eval examps #:label #f
-           (xexpr->string '(body (main (script "3 > 2"))))]
+@examples[#:eval examps #:label #f
+          (xexpr->string '(body (main (script "3 > 2"))))]
 
 The @racket[display-xml/content] function (in combination with @racket[xexpr->xml]) offers options
 for indentation, but the docs warn that in HTML applications additional whitespace may be
@@ -152,7 +152,7 @@ with its own very odd optional line wrapping scheme: adding a line break before 
 @examples[#:eval examps #:label #f
           (write-xexpr '(body (article (p (b "Hello") (i "World")))))
           (write-xexpr '(body (article (p (b "Hello") (i "World"))))
-                        #:insert-newlines? #t)]
+                       #:insert-newlines? #t)]
 
 @subsection{Comparing with @tt{xexpr->html}}
 
@@ -184,7 +184,7 @@ package is that Tidy still counts line width by characters rather than graphemes
 lines earlier than necessary when they contain emoji or other multi-byte graphemes.
 
 @margin-note{Note that MacOS ships with an old version of HTML Tidy, but it's too old for use with
-modern HTML.}
+ modern HTML.}
 
 This package includes unit tests which compare its output against that of HTML Tidy in some cases.
 When tests are run (including at the time of package installation), it will search for a version of
@@ -201,25 +201,25 @@ are a couple more, though they will only be interesting to people who really wan
 
 @deftogether[(
              
-@defproc[(proof [x xexpr?] [#:wrap wrap 20]) void?]
+              @defproc[(proof [x xexpr?] [#:wrap wrap 20]) void?]
  
-@defproc[(debug [x xexpr?] [#:wrap wrap 20]) void?]
+               @defproc[(debug [x xexpr?] [#:wrap wrap 20]) void?]
 
 )]{
 
-Used for a close visual inspection of line wrapping and indentation, @racket[proof] displays the
-result of @racket[(xexpr->html5 x #:wrap wrap)] but with a column rule at the top and whitespace
-characters made visible:
+ Used for a close visual inspection of line wrapping and indentation, @racket[proof] displays the
+ result of @racket[(xexpr->html5 x #:wrap wrap)] but with a column rule at the top and whitespace
+ characters made visible:
 
-@examples[#:eval examps #:label #f
-          (proof '(p "Chaucer, Rabelais and " (em "Balzac!")))]
+ @examples[#:eval examps #:label #f
+           (proof '(p "Chaucer, Rabelais and " (em "Balzac!")))]
 
-The @racket[debug] function does the same thing but spits out an ungodly amount of gross logging on
-@racket[(current-error-port)], for use in debugging the printing algorithm. This function may
-become a no-op or disappear altogether in the future.
+ The @racket[debug] function does the same thing but spits out an ungodly amount of gross logging on
+ @racket[(current-error-port)], for use in debugging the printing algorithm. This function may
+ become a no-op or disappear altogether in the future.
 
-@examples[#:eval examps #:label #f
-          (debug '(p "Chaucer, Rabelais and " (em "Balzac!")))]
+ @examples[#:eval examps #:label #f
+           (debug '(p "Chaucer, Rabelais and " (em "Balzac!")))]
 
 }
 
