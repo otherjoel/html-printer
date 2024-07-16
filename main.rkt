@@ -6,6 +6,7 @@
          "private/printer.rkt"
          racket/match
          racket/port
+         racket/string
          xml)
 
 (provide xexpr->html5)
@@ -39,7 +40,8 @@
                  "")]
         [else
          (values (format "~a=" key)
-                 (format (if (null? remaining) "\"~a\">" "\"~a\" ") (escape val attribute-table)))]))
+                 (format (if (null? remaining) "\"~a\">" "\"~a\" ")
+                         (escape (string-normalize-spaces val) attribute-table)))]))
     (values (cons val-str (cons key-str chunks))
             (safe-rest remaining))))
 

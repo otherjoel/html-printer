@@ -43,6 +43,13 @@
 
 (check-matches-tidy? 20 '(p [[title "x x x x x x x x x x x x x x x x x x x x"]] "z"))
 
+(check-fmt 20 "whitespace/line breaks in attribute values normalized to single spaces"
+           '(head (link [[href "x\nx  x \tx \r\n\t x"]]))
+           '("<head>"
+             "  <link href="
+             "  \"x x x x x\">"
+             "</head>\n"))
+
 (check-fmt 20 "UTF-8: Multi-byte emojis count as 1 grapheme"
            (xpr '(p "🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️🧞‍♀️🧝‍♂️ 🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️"))
            '("<body>"
