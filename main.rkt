@@ -80,13 +80,13 @@
   (match v
     [(? null?) prev-token]
     [(list* (and (? symbol?) (? br?)) _)
-     (log-debug "[prev ~a] br" prev-token)
+     (log-expr break-tag found v prev-token)
      (yeet! '(put/wrap "<br>") 'flush 'break/indent)
      'flow-opened] ; hacky
     
     ; flow tag
     [(list (? flow? tag) (list (? attr? attrs) ...) elems ...)
-     (log-debug "[prev ~a] In flow tag ~a" prev-token tag)
+     (log-expr flow starting… tag prev-token)
      (when inside-inline?
        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
      (unless (flow-opened? prev-token) (yeet! 'indent))
@@ -101,28 +101,31 @@
      (if (or (block-closed? last-tok) (flow-closed? last-tok))
          (yeet! '--indent)
          (yeet! 'flush 'break/--indent))
-     (log-debug "[last ~a] closing ~a" last-tok tag)
+     (log-expr flow …closing tag last-tok)
      (yeet! `(put/wrap ,(closer tag))
             'break)
      'flow-closed]
     
     ; block tag
     [(list (? block? tag) (list (? attr? attrs) ...) elems ...)
-     (log-debug "[prev ~a] In block tag ~a" prev-token tag)
+     (log-expr block starting… tag prev-token)
      (when inside-inline?
        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
      (unless (flow-opened? prev-token) (yeet! 'indent))
      (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
        (yeet! `(put/wrap ,a)))   
-     (for/fold ([last-token 'normal])
-               ([elem (in-list elems)])
-       (display-val yeet! elem last-token))
+     (define last-tok
+       (for/fold ([last-token 'normal])
+                 ([elem (in-list elems)])
+         (display-val yeet! elem last-token)))
+     (log-expr block …closing tag last-tok)
      (yeet! 'check/flush `(put ,(closer tag)) 'break)
      'block-closed]
     
     ; script, style, pre
     [(list (? preserve-contents? tag) (list (? attr? attrs) ...) elems ...)
+     (log-expr preserve start… tag prev-token)
      (unless (flow-opened? prev-token) (yeet! 'indent))
      (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
@@ -133,6 +136,7 @@
        [(pre)
         (for ([elem (in-list elems)])
           (yeet! `(put ,(if (string? elem) (escape elem string-element-table) elem))))])
+     (log-expr preserve …closing tag)
      (yeet! 'indent-if-col1
             `(put ,(closer tag))
             'break)
@@ -140,7 +144,7 @@
     
     ; inline tag
     [(list (? symbol? tag) (list (? attr? attrs) ...) elems ...)
-     (log-debug "[prev ~a] In inline tag ~a" prev-token tag)
+     (log-expr inline start… tag prev-token)
      (when (or (flow-closed? prev-token)
                (block-closed? prev-token))
        (yeet! 'indent))
@@ -152,8 +156,8 @@
                  ([elem (in-list elems)])
          (display-val yeet! elem last #:in-inline? tag)))
      (define popped (yeet! 'pop-whitespace))
-     (log-debug "popped ~v I guess" popped)
-     (log-debug "[last ~a] closing ~a" last-token tag)
+     (log-expr inline after popped tag)
+     (log-expr inline …closing tag last-token)
      (yeet! `(,(if (sticky? last-token) 'put 'put/wrap) ,(closer tag)))
      (when popped (yeet! `(put/wrap ,popped)))
      (if (member last-token '(normal sticky))
@@ -169,18 +173,17 @@
     ;; valid combination of CRLF characters (so "\r\r\n" becomes '("\r" "\r\n"), e.g.)
     ;; This match is never reached while inside <script>, <style> or <pre>
     [(? string? str)
-     (log-debug "[prev ~a] Start - string content: ~v" prev-token str)
+     (log-expr string starting… prev-token str)
      (define-values (last-word count)
        (for/fold ([last ""]
                   [count 0]
                   [prev-tok prev-token]
                   #:result (values last count))
                  ([word (in-list (words str))])
-         (log-debug "[prev ~a] string ~v" prev-tok word)
          (define out-str (if (linebreak? word) " " (escape word string-element-table)))
          (yeet! `(,(if (sticky? prev-tok) 'put 'put/wrap) ,out-str))
          (values out-str (+ 1 count) 'normal)))
-     (log-debug "[~a] End - string content" last-word)
+     (log-expr string end last-word)
      (cond
        [(and (memq prev-token '(flow-opened flow-closed block-closed))
              (whitespace? str))
@@ -189,9 +192,11 @@
        [else 'normal])]
     
     [(? comment? c)
+     (log-expr comment start prev-token)
      (yeet! '(put/wrap "<!--"))
      (for ([str (in-list (words (comment-text c)))])
        (yeet! `(put/wrap ,str)))
+     (log-expr comment …closing prev-token)
      (yeet! '(put/wrap "-->") 'flush)
      (when (memq prev-token '(flow-opened flow-closed block-closed))
        (yeet! 'break/indent))
@@ -200,7 +205,7 @@
     [(or (? symbol? v)
          (? exact-positive-integer? v)
          (? xexpr? v))
-     (log-debug "[prev ~a] ~a" prev-token v)
+     (log-expr 'other found v prev-token)
      (yeet! `(,(if (sticky? prev-token) 'put 'put/wrap) ,v))
      (if (or (symbol? v) (number? v)) 'sticky prev-token)]
     [_

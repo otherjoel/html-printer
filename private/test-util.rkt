@@ -12,7 +12,7 @@
 (module+ test)
 
 ;; Convert output to lists of strings for use in tests
-(define (->strs v) (string-split (xexpr->html5 v #:wrap-at 20) (sys-newline)))
+(define (->strs v) (string-split (xexpr->html5 v #:wrap 20) (sys-newline)))
 
 (define-check (check-fmt width msg xpr strs)
   (define my-result (xexpr->html5 xpr #:wrap width))
