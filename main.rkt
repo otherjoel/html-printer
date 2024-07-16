@@ -209,13 +209,15 @@
     
     [(? comment? c)
      (log-expr comment start prev-token)
+     (when (block-closed? prev-token) (yeet! 'indent))
      (yeet! '(put/wrap "<!--"))
      (for ([str (in-list (words (comment-text c)))])
        (yeet! `(put/wrap ,str)))
      (log-expr comment …closing prev-token)
      (yeet! '(put/wrap "-->") 'flush)
-     (when (memq prev-token '(flow-opened flow-closed block-closed))
-       (yeet! 'break/indent))
+     (case prev-token
+       [(flow-opened flow-closed) (yeet! 'break/indent)]
+       [(block-closed) (yeet! 'break)])
      prev-token]
 
     [(or (? symbol? v)

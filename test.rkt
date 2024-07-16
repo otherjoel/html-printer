@@ -467,6 +467,25 @@
              "  </main>"
              "</body>\n"))
 
+(check-fmt 45 "Indenting carries through correctly in the presence of comments"
+           `(body (main (p "Hi")
+                        ,(comment "this is a comment")
+                        (p (span "1") ,(comment "another") (em "2"))
+                        (blockquote
+                         ,(comment "third comment")
+                         (p "hello"))))
+           '("<body>"
+             "  <main>"
+             "    <p>Hi</p>"
+             "    <!--this is a comment-->"
+             "    <p><span>1</span><!--another--><em>2</em></p>"
+             "    <blockquote>"
+             "      <!--third comment-->"
+             "      <p>hello</p>"
+             "    </blockquote>"
+             "  </main>"
+             "</body>\n"))
+
 (check-fmt 20 "Comments wrap intelligently inside block elements"
            `(main (article (p "Hi " ,(comment "a comment") "hi")))
            '("<main>"
