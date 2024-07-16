@@ -207,7 +207,7 @@ the output can be difficult to read without additional processing.
                         (section (h1 "Beginning"))
                         (section (h1 "End")))))
           (display (xexpr->html xp))
-          (display (xexpr->html5 xp #:wrap 20))]
+          (display (xexpr->html5 xp))]
 
 @subsection{Comparing with HTML Tidy}
 
@@ -216,10 +216,23 @@ available tool for linting, correcting and formatting HTML markup since its crea
 original purpose was to correct errors in HTML files written by hand in text editors.
 
 Tidy is a much more comprehensive tool than this one and much more configurable. It always produces
-correctly line-wrapped and indented HTML, though this is only part of its functionality. In terms of
-formatting functionality specifically, the only significant difference betweeen Tidy and this
-package is that Tidy still counts line width by characters rather than graphemes, so it may wrap
-lines earlier than necessary when they contain emoji or other multi-byte graphemes.
+correctly line-wrapped and indented HTML, though this is only part of its functionality.
+
+In terms of formatting functionality specifically, there are only a couple of significant difference
+betweeen Tidy and this package:
+
+@itemlist[
+
+ @item{HTML Tidy still counts line width by characters rather than graphemes, so it may wrap
+lines earlier than necessary when they contain emoji or other multi-byte graphemes.}
+
+ @item{HTML Tidy has numerous configuration options for adjusting the output formatting and for pruning
+  the output (such as removing empty elements that could otherwise have content).
+  @racket[xexpr->html5] offers very few options for customizing the output, focusing instead on
+  providing a reasonable set of defaults, and avoiding any meaningful transformation of the structure
+  of the HTML input.}
+
+ ]
 
 @margin-note{Note that MacOS ships with an old version of HTML Tidy, but it's too old for use with
  modern HTML.}
