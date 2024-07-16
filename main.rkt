@@ -124,7 +124,7 @@
      (when inside-inline?
        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
      (cond
-       [(memq prev-token '(normal sticky)) (yeet! 'flush 'break/indent)] ; include normal as well?
+       [(memq prev-token '(normal sticky)) (yeet! 'flush 'break/indent)]
        [else (unless (flow-opened? prev-token) (yeet! 'indent))])
      (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
@@ -135,7 +135,6 @@
          (display-val yeet! elem last-token)))
      (log-expr block …closing tag last-tok)
      (yeet! 'check/flush `(put ,(closer tag)) 'break)
-     ;(when (break-after-block?) (yeet! 'break))
      'block-closed]
     
     ; script, style, pre
