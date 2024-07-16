@@ -12,7 +12,7 @@
 (if (tidy-version-sufficient?)
     (printf "Test harness using HTML Tidy version ~a for comparison checks\n" (get-tidy-version))
     (printf "No stable release of HTML Tidy >= ~a found, skipping Tidy comparison checks\n"
-             minimum-tidy-version))
+            minimum-tidy-version))
 
 (check-fmt 20 "Naked strings work correctly" " Hi" '("Hi"))
 
@@ -266,6 +266,54 @@
              "    five</title>"
              "  </head>"
              "</html>\n"))
+
+(check-fmt 20 "Blocks adjacent to inline elements wrap as expected (narrow; img+figcaption)"
+           '(body (figure (img [[src "foo.jpg"]]) (figcaption "Hi")))
+           '("<body>"
+             "  <figure>"
+             "    <img src="
+             "    \"foo.jpg\">"
+             "    <figcaption>"
+             "    Hi</figcaption>"
+             "  </figure>"
+             "</body>\n"))
+
+(check-fmt 20 "Blocks adjacent to inline elements wrap as expected (narrow; img+empty figcaption)"
+           '(body (figure (img [[src "foo.jpg"]]) (figcaption)))
+           '("<body>"
+             "  <figure>"
+             "    <img src="
+             "    \"foo.jpg\">"
+             "    <figcaption></figcaption>"
+             "  </figure>"
+             "</body>\n"))
+
+(check-fmt 40 "Blocks adjacent to inline elements wrap as expected (wide; img+figcaption)"
+           '(body (figure (img [[src "foo.jpg"]]) (figcaption "Hi")))
+           '("<body>"
+             "  <figure>"
+             "    <img src=\"foo.jpg\">"
+             "    <figcaption>Hi</figcaption>"
+             "  </figure>"
+             "</body>\n"))
+
+(check-fmt 40 "Blocks adjacent to inline elements wrap as expected (wide; img+empty figcaption)"
+           '(body (figure (img [[src "foo.jpg"]]) (figcaption)))
+           '("<body>"
+             "  <figure>"
+             "    <img src=\"foo.jpg\">"
+             "    <figcaption></figcaption>"
+             "  </figure>"
+             "</body>\n"))
+
+(check-fmt 40 "Blocks adjacent to inline elements wrap as expected (wide; inline w/space+empty figcaption)"
+         '(body (figure (img [[src "foo.jpg"]]) (b "hi ") (figcaption)))
+         '("<body>"
+             "  <figure>"
+             "    <img src=\"foo.jpg\"><b>hi</b>"
+             "    <figcaption></figcaption>"
+             "  </figure>"
+             "</body>\n"))
 
 (check-fmt 25 "Tables wrap as expected"
            '(table (thead (tr (td "Col 1") (td "Col 2") (td "Col 3")))

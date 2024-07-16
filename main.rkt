@@ -76,7 +76,7 @@
 (define (flow-closed? v) (eq? v 'flow-closed))
 (define (block-closed? v) (eq? v 'block-closed))
 
-(define (display-val yeet! v [prev-token 'normal] #:in-inline? [inside-inline? #f])
+(define (display-val yeet! v [prev-token 'first] #:in-inline? [inside-inline? #f])
   (match v
     [(? null?) prev-token]
     [(list* (and (? symbol?) (? br?)) _)
@@ -111,7 +111,9 @@
      (log-expr block starting… tag prev-token)
      (when inside-inline?
        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
-     (unless (flow-opened? prev-token) (yeet! 'indent))
+     (cond
+       [(memq prev-token '(normal sticky)) (yeet! 'flush 'break/indent)] ; include normal as well?
+       [else (unless (flow-opened? prev-token) (yeet! 'indent))])
      (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
        (yeet! `(put/wrap ,a)))   
