@@ -60,7 +60,7 @@
 
     (define (flush! [lev 1])
       (unless (accum-empty?)
-        (log-printer lev flush start… col accum-width logical-line-start accumulator)
+        (log-printer lev flush start… col accum-width logical-line-start indent-level accumulator)
         (define lopped? (lop-accum-whsp-end! 'right))
         (define buffer (mutable-treelist))
         (define buf-width
@@ -75,7 +75,7 @@
                (cond
                  [(~empty? buffer) (values held-whsp? 0)]
                  [else
-                  (log-printer (+ lev 2) flush printbuf… held-whsp? logical-line-start)
+                  (log-printer (+ lev 2) flush printbuf… held-whsp? logical-line-start indent-level)
                   (for ([bv (in-mutable-treelist buffer)])
                     (unless (and logical-line-start (whitespace? bv))
                       (put! bv (+ lev 3))))
@@ -105,24 +105,24 @@
           )))
         
     (define (break! [lev 1])
-      (log-printer lev break! start… col accum-width logical-line-start accumulator)
+      (log-printer lev break! start… col accum-width logical-line-start indent-level accumulator)
       (flush! (+ lev 1))
       (display (sys-newline) outp)
       (set! logical-line-start #t)
       (set! col 1)
-      (log-printer lev break! …end col accum-width logical-line-start accumulator))
+      (log-printer lev break! …end col accum-width logical-line-start indent-level accumulator))
     
     (define (break+indent! [lev 1])
-      (log-printer lev break+indent! start… col accum-width logical-line-start accumulator)
+      (log-printer lev break+indent! start… col accum-width logical-line-start indent-level accumulator)
       (display (sys-newline) outp)
       (display (make-string indent-level #\space) outp)
       (set! logical-line-start #t)
       (set! col (+ 1 indent-level))
       (lop-accum-whsp-end! 'left)
-      (log-printer lev break+indent! …end col accum-width logical-line-start accumulator))
+      (log-printer lev break+indent! …end col accum-width logical-line-start indent-level accumulator))
 
     (define (accumulate! v [lev 1] #:breakpoint-before? [breakpoint-before? #f])
-      (log-printer lev accum! start… col accum-width logical-line-start breakpoint-before? accumulator)
+      (log-printer lev accum! start… col accum-width logical-line-start indent-level breakpoint-before? accumulator)
       (define str (->string v))
       (define whsp? (whitespace? str))
       (define len (string-grapheme-count str))
@@ -131,18 +131,18 @@
         (when breakpoint-before? (~add! accumulator breakpoint))
         (~add! accumulator str)
         (set! accum-width (+ accum-width len)))
-      (log-printer lev accum! …end col accum-width logical-line-start accumulator))
+      (log-printer lev accum! …end col accum-width logical-line-start indent-level accumulator))
 
     (define (accumulate/wrap! v [lev 1])
-      (log-printer lev accum/wrap! start… col accum-width logical-line-start accumulator)
+      (log-printer lev accum/wrap! start… col accum-width logical-line-start indent-level accumulator)
       (define str (->string v))
       (when (> (+ col accum-width (string-grapheme-count str)) wrap-col)
         (flush! (+ 1 lev)))
       (accumulate! str (+ lev 1) #:breakpoint-before? #t)
-      (log-printer lev accum/wrap! …end col accum-width logical-line-start accumulator))
+      (log-printer lev accum/wrap! …end col accum-width logical-line-start indent-level accumulator))
 
     (define (put! v [lev 1])
-      (log-printer lev put! start… v col accum-width logical-line-start)
+      (log-printer lev put! start… v col accum-width logical-line-start indent-level)
       (define str (->string v))
       (unless (whitespace? str) (set! logical-line-start #f))
       (set! col
@@ -153,7 +153,7 @@
                      (set! logical-line-start #t)
                      1]
                     [else (+ c (string-grapheme-count w))])))
-      (log-printer lev put! …end col accum-width logical-line-start))
+      (log-printer lev put! …end col accum-width logical-line-start indent-level))
     
     (define proc
       (lambda args
@@ -164,33 +164,34 @@
             [(break)
              (break!)]
             [(check/flush)
-             (log-printer 1 check/flush col accum-width wrap-col)
+             (log-printer 1 check/flush col accum-width wrap-col indent-level)
              (when (> (+ col accum-width) wrap-col) (flush! 2))]
             [(flush)
              (flush!)]
             [(indent)
-             (log-printer 1 indent start col)
+             (log-printer 1 indent start col indent-level)
              (display (make-string indent-level #\space) outp)
              (set! col (+ col indent-level))
-             (log-printer 1 indent end col)]
+             (log-printer 1 indent end col indent-level)]
             [(indent-if-col1)
-             (log-printer 1 indent-if-col1 start col)
+             (log-printer 1 indent-if-col1 start col indent-level)
              (when (= col 1)
                (display (make-string indent-level #\space) outp)
                (set! col (+ col indent-level)))
-             (log-printer 1 indent-if-col1 end col)]
+             (log-printer 1 indent-if-col1 end col indent-level)]
             [(--indent)
-             (log-printer 1 --indent start col)
+             (log-printer 1 --indent start col indent-level)
              (set! indent-level (max 0 (- indent-level indent)))
              (display (make-string indent-level #\space) outp)
              (set! col (+ col indent-level))
-             (log-printer 1 --indent end col)]
+             (log-printer 1 --indent end col indent-level)]
             [(break/indent)
              (break+indent!)]
             [(break/++indent)
-             (log-printer 1 break/++indent _ col)
+             (log-printer 1 break/++indent start col indent-level)
              (set! indent-level (+ indent-level indent))
-             (break+indent! 2)]
+             (break+indent! 2)
+             (log-printer 1 break/++indent end col indent-level)]
             [(break/--indent)
              (log-printer 1 break/--indent _ col)
              (set! indent-level (max 0 (- indent-level indent)))
