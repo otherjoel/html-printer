@@ -9,6 +9,7 @@
          words
          newline-convention
          sys-newline
+         sys-add-empty-lines
          escape
          string-element-table
          attribute-table
@@ -22,6 +23,11 @@
 
 (define (sys-newline)
   (if (eq? (newline-convention) 'windows) "\r\n" "\n"))
+
+; used in docs to ensure empty lines are shown
+(define (sys-add-empty-lines str)
+  (define nl (sys-newline))
+  (regexp-replace* (regexp (format "~a~a" nl nl)) str (format "~a ~a" nl nl)))
 
 ;; Predicate returning true if val is a string consisting entirely of whitespace (or nothing).
 ;; NB: A non-breaking space is not counted as whitespace.

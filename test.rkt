@@ -267,6 +267,18 @@
              "  </head>"
              "</html>\n"))
 
+(check-fmt-addbrs 80 "add-breaks does not add breaks in front of meta, link, title"
+                  '(html (head (link [[rel "stylesheet"] [href "style.css"]])
+                               (meta [[charset "UTF-8"]])
+                               (title "onetwothreefour five")))
+                  '("<html>"
+                    "  <head>"
+                    "    <link rel=\"stylesheet\" href=\"style.css\">"
+                    "    <meta charset=\"UTF-8\">"
+                    "    <title>onetwothreefour five</title>"
+                    "  </head>"
+                    "</html>\n"))
+
 (check-fmt 20 "Blocks adjacent to inline elements wrap as expected (narrow; img+figcaption)"
            '(body (figure (img [[src "foo.jpg"]]) (figcaption "Hi")))
            '("<body>"
@@ -307,8 +319,8 @@
              "</body>\n"))
 
 (check-fmt 40 "Blocks adjacent to inline elements wrap as expected (wide; inline w/space+empty figcaption)"
-         '(body (figure (img [[src "foo.jpg"]]) (b "hi ") (figcaption)))
-         '("<body>"
+           '(body (figure (img [[src "foo.jpg"]]) (b "hi ") (figcaption)))
+           '("<body>"
              "  <figure>"
              "    <img src=\"foo.jpg\"><b>hi</b>"
              "    <figcaption></figcaption>"
@@ -334,6 +346,31 @@
              "    </tr>"
              "  </tbody>"
              "</table>\n"))
+
+(check-fmt-addbrs 25 "Tables wrap as expected (with added breaks)"
+                  '(table (thead (tr (td "Col 1") (td "Col 2") (td "Col 3")))
+                          (tbody (tr (td "a") (td "b") (td "c"))))
+                  '("<table>"
+                    "  <thead>"
+                    "    <tr>"
+                    "      <td>Col 1</td>"
+                    ""
+                    "      <td>Col 2</td>"
+                    ""
+                    "      <td>Col 3</td>"
+                    "    </tr>"
+                    "  </thead>"
+                    ""
+                    "  <tbody>"
+                    "    <tr>"
+                    "      <td>a</td>"
+                    ""
+                    "      <td>b</td>"
+                    ""
+                    "      <td>c</td>"
+                    "    </tr>"
+                    "  </tbody>"
+                    "</table>\n"))
 
 (check-matches-tidy? 25 '(table (thead (tr (td "Col 1") (td "Col 2") (td "Col 3")))
                                 (tbody (tr (td "a") (td "b") (td "c")))))

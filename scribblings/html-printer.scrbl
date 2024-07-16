@@ -1,6 +1,7 @@
 #lang scribble/manual
 
-@(require scribble/examples)
+@(require scribble/examples
+          "../private/strings.rkt")
 
 @require[html-printer/private/tidy
          @for-label[html-printer
@@ -10,7 +11,7 @@
                     xml]]
 
 @(define examps (make-base-eval #:lang 'racket/base))
-@(examps '(require html-printer html-printer/debug txexpr xml))
+@(examps '(require html-printer html-printer/debug txexpr xml html-printer/private/strings))
 
 @title[#:style 'toc]{HTML5 Printer}
 @author{Joel Dueck}
@@ -36,7 +37,9 @@ If you encounter a bug, please open an issue on
 
 Requires Racket 8.13 or later due to internal use of @racketmodname[racket/mutable-treelist].
 
-@defproc[(xexpr->html5 [xpr xexpr?] [#:wrap wrap-col exact-positive-integer? 100]) string?]{
+@defproc[(xexpr->html5 [xpr xexpr?] 
+                       [#:wrap wrap-col exact-positive-integer? 100]
+                       [#:add-breaks? add-breaks? any/c #f]) string?]{
 
  Converts @racket[_xpr] to a string of HTML, nicely wrapped and indented, ready for consumption.
  Leave @racket[_wrap-col] at its default of 100 columns, or shrink it down hard to test the
@@ -48,9 +51,38 @@ Requires Racket 8.13 or later due to internal use of @racketmodname[racket/mutab
                           '(body
                             (article
                              (h1 "My Title")
-                             (p "Welcome to the blog!")))))]
+                             (p "Welcome to the blog!"))
+                            (footer
+                             (div (p "Right here in River City"))))))]
 
-That’s all there is to it, really. But if you want more info, check out the @secref{deets}.
+ If @racket[_add-breaks?] is not @racket[#f], additional line breaks will be added between closing 
+ block/flow tags (except for @racketoutput{<meta>}, @racketoutput{<link>} and @racketoutput{<title>})
+ and any opening tags:
+
+ @examples[#:eval examps #:label #f
+           (eval:alts
+            (display (xexpr->html5
+                      #:add-breaks? #t
+                      '(body
+                        (article
+                         (h1 "My Title")
+                         (p "Welcome to the blog!"))
+                        (footer
+                         (div (p "Right here in River City"))))))
+            (display
+             (sys-add-empty-lines
+                              (xexpr->html5
+                               #:add-breaks? #t
+                               '(body
+                                 (article
+                                  (h1 "My Title")
+                                  (p "Welcome to the blog!"))
+                                 (footer
+                                  (div (p "Right here in River City"))))))))
+           ]
+
+
+ That’s all there is to it, really. But if you want more info, check out the @secref{deets}.
 
 }
 

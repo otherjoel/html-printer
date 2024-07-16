@@ -23,6 +23,15 @@
                       ['expected (string-info (w/rule width standard))])
       (fail-check))))
 
+(define-check (check-fmt-addbrs width msg xpr strs)
+  (define my-result (xexpr->html5 xpr #:wrap width #:add-breaks? #t))
+  (define standard (string-join strs (sys-newline)))
+  (unless (equal? my-result standard)
+    (with-check-info (['message (string-info msg)]
+                      ['|writer result| (string-info (w/rule width my-result))]
+                      ['expected (string-info (w/rule width standard))])
+      (fail-check))))
+
 ;; Check the writer's result against the output of HTML Tidy.
 ;; If a sufficiently new version of HTML Tidy is not installed, check passes.
 (define-check (check-matches-tidy? width x)
@@ -72,9 +81,9 @@
                   (string-replace str " " "·")
                   (sys-newline) (string-append "¶" (sys-newline)))))
 
-(define (proof v #:wrap [wrap 20])
-  (display (w/rule wrap (xexpr->html5 v #:wrap wrap))))
+(define (proof v #:wrap [wrap 20] #:add-breaks? [br? #t])
+  (display (w/rule wrap (xexpr->html5 v #:wrap wrap #:add-breaks? br?))))
 
 ;; Print v as HTML and show all the debug-level logging
-(define (debug v #:wrap [wrap 20])
-  (display (w/rule wrap (logging-to-stderr (lambda () (xexpr->html5 v #:wrap wrap))))))
+(define (debug v #:wrap [wrap 20] #:add-breaks? [br? #t])
+  (display (w/rule wrap (logging-to-stderr (lambda () (xexpr->html5 v #:wrap wrap #:add-breaks? br?))))))

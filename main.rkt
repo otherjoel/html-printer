@@ -76,6 +76,14 @@
 (define (flow-closed? v) (eq? v 'flow-closed))
 (define (block-closed? v) (eq? v 'block-closed))
 
+(define break-after-block? (make-parameter #f))
+(define (add-break? tag prev-tok)
+  (and (break-after-block?)
+       (not (memq tag '(meta link title)))
+       (case prev-tok
+         [(flow-closed block-closed) #t]
+         [else #f])))
+
 (define (display-val yeet! v [prev-token 'first] #:in-inline? [inside-inline? #f])
   (match v
     [(? null?) prev-token]
@@ -87,6 +95,7 @@
     ; flow tag
     [(list (? flow? tag) (list (? attr? attrs) ...) elems ...)
      (log-expr flow starting… tag prev-token)
+     (when (add-break? tag prev-token) (yeet! 'break))
      (when inside-inline?
        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
      (unless (flow-opened? prev-token) (yeet! 'indent))
@@ -108,6 +117,7 @@
     
     ; block tag
     [(list (? block? tag) (list (? attr? attrs) ...) elems ...)
+     (when (add-break? tag prev-token) (yeet! 'break))
      (log-expr block starting… tag prev-token)
      (when inside-inline?
        (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
@@ -123,11 +133,13 @@
          (display-val yeet! elem last-token)))
      (log-expr block …closing tag last-tok)
      (yeet! 'check/flush `(put ,(closer tag)) 'break)
+     ;(when (break-after-block?) (yeet! 'break))
      'block-closed]
     
     ; script, style, pre
     [(list (? preserve-contents? tag) (list (? attr? attrs) ...) elems ...)
      (log-expr preserve start… tag prev-token)
+     (when (add-break? tag prev-token) (yeet! 'break))
      (unless (flow-opened? prev-token) (yeet! 'indent))
      (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
@@ -147,6 +159,7 @@
     ; inline tag
     [(list (? symbol? tag) (list (? attr? attrs) ...) elems ...)
      (log-expr inline start… tag prev-token)
+     (when (add-break? tag prev-token) (yeet! 'break))
      (when (or (flow-closed? prev-token)
                (block-closed? prev-token))
        (yeet! 'indent))
@@ -216,9 +229,10 @@
                             "value" v)]
     ))
 
-(define (xexpr->html5 v #:wrap [wrap 100])
+(define (xexpr->html5 v #:wrap [wrap 100] #:add-breaks? [add-breaks? #f])
   (with-output-to-string
     (λ ()
       (define proc (make-wrapping-printer #:wrap-at wrap))
-      (display-val proc v)
+      (parameterize ([break-after-block? add-breaks?])
+        (display-val proc v))
       (proc 'flush))))
