@@ -1,12 +1,16 @@
 #lang racket/base
 
 (require (for-syntax racket/base)
-         racket/format
          racket/list
          racket/logging
          racket/mutable-treelist)
 
-(provide (all-defined-out))
+(provide html-printer-logger
+         logging-enabled?
+         log-err
+         log-expr            ; For logging debug info at the xexpr-walking level
+         log-printer         ; For logging debug info at the low-level printer level
+         logging-to-stderr)
 
 (module+ test)
 

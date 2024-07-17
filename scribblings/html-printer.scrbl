@@ -1,7 +1,6 @@
 #lang scribble/manual
 
-@(require scribble/examples
-          "../private/strings.rkt")
+@(require scribble/examples)
 
 @require[html-printer/private/tidy
          @for-label[html-printer
@@ -266,8 +265,9 @@ are a couple more, though they will only be interesting to people who really wan
            (proof '(p "Chaucer, Rabelais and " (em "Balzac!")))]
 
  The @racket[debug] function does the same thing but spits out an ungodly amount of gross logging on
- @racket[(current-error-port)], for use in debugging the printing algorithm. This function may
- become a no-op or disappear altogether in the future.
+ @racket[(current-error-port)], for use in debugging the printing algorithm. (Note that all logging
+ activity is disabled by default because of its huge performance penalty, but it gets temporarily
+ enabled during calls to @racket[debug] by way of @racket[parameterize].)
 
  @examples[#:eval examps #:label #f
            (debug '(p "Chaucer, Rabelais and " (em "Balzac!")))]

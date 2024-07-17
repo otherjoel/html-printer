@@ -51,17 +51,17 @@
          lopped-width]
         [else #f]))
     
-    (define (lop-accum-whsp-end! which-end)
+    (define (lop-accum-whsp-end! which-end [lev 1])
       (match (lop-whsp-end! accumulator which-end)
         [(? number? lopped-len)
-         (log-debug "accum width ~a - ~a (~a)" accum-width lopped-len which-end)
+         (log-printer lev lop-accum-end _ accum-width lopped-len which-end)
          (set! accum-width (- accum-width lopped-len))]
         [_ #f]))
 
     (define (flush! [lev 1])
       (unless (accum-empty?)
         (log-printer lev flush start… col accum-width logical-line-start indent-level accumulator)
-        (define lopped? (lop-accum-whsp-end! 'right))
+        (define lopped? (lop-accum-whsp-end! 'right (+ lev 1)))
         (define buffer (mutable-treelist))
         (define buf-width
           (for/fold ([held-whsp? #f]
@@ -118,7 +118,7 @@
       (display (make-string indent-level #\space) outp)
       (set! logical-line-start #t)
       (set! col (+ 1 indent-level))
-      (lop-accum-whsp-end! 'left)
+      (lop-accum-whsp-end! 'left (+ lev 1))
       (log-printer lev break+indent! …end col accum-width logical-line-start indent-level accumulator))
 
     (define (accumulate! v [lev 1] #:breakpoint-before? [breakpoint-before? #f])
