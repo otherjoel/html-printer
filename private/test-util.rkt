@@ -86,4 +86,8 @@
 
 ;; Print v as HTML and show all the debug-level logging
 (define (debug v #:wrap [wrap 20] #:add-breaks? [br? #t])
-  (display (w/rule wrap (logging-to-stderr (lambda () (xexpr->html5 v #:wrap wrap #:add-breaks? br?))))))
+  (display
+   (w/rule wrap
+           (logging-to-stderr
+            (lambda () (parameterize ([logging-enabled? #t])
+                         (xexpr->html5 v #:wrap wrap #:add-breaks? br?)))))))

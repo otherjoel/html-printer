@@ -11,6 +11,7 @@
 (module+ test)
 
 (define-logger html-printer)
+(define logging-enabled? (make-parameter #f))
 
 (define (log-debug . items)
   (log-html-printer-debug (apply format items)))
@@ -35,11 +36,11 @@
 
 (define-syntax (log-expr stx)
   (syntax-case stx ()
-    [(_ OP MSG VAR ...) #'(log-op 0 "EXPR" 'OP 'MSG VAR ...)]))
+    [(_ OP MSG VAR ...) #'(and (logging-enabled?) (log-op 0 "EXPR" 'OP 'MSG VAR ...))]))
 
 (define-syntax (log-printer stx)
   (syntax-case stx ()
-    [(_ LVL OP MSG VAR ...) #'(log-op LVL "PRT" 'OP 'MSG VAR ...)]))
+    [(_ LVL OP MSG VAR ...) #'(and (logging-enabled?) (log-op LVL "PRT" 'OP 'MSG VAR ...))]))
 
 ;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ;; Formatting
