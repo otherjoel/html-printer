@@ -244,16 +244,16 @@ Otherwise, the tests will pass without any comparison actually being made.
 
 @subsection{Probing and prodding}
 
-@defmodule[html-printer/debug]
+@defmodule[html-printer/debug #:use-sources (html-printer/private/test-util)]
 
 I lied at the beginning of these docs when I said this package only provides a single function. Here
 are a couple more, though they will only be interesting to people who really want to kick the tires.
 
 @deftogether[(
              
-              @defproc[(proof [x xexpr?] [#:wrap wrap 20]) void?]
+              @defproc[(proof [x xexpr?] [#:wrap wrap exact-positive-integer? 20]) void?]
  
-               @defproc[(debug [x xexpr?] [#:wrap wrap 20]) void?]
+               @defproc[(debug [x xexpr?] [#:wrap wrap exact-positive-integer? 20]) void?]
 
 )]{
 
