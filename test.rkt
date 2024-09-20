@@ -538,3 +538,41 @@
              (list (format "<~a>~a"
                            tag
                            (if (or (block? tag) (flow? tag) (eq? tag 'br)) (sys-newline) "")))))
+
+(check-fmt 80 "template-directive attribute renders correctly"
+           '(div ((type "checkbox") (template-directive "blah")) "Content")
+           '("<div type=\"checkbox\" blah>"
+             "  Content"
+             "</div>\n"))
+
+(check-fmt 80 "template-directive attribute renders correctly with multiple attributes"
+           '(input ((type "text") (name "username") (template-directive "required") (class "form-input")))
+           '("<input type=\"text\" name=\"username\" required class=\"form-input\">"))
+
+(check-fmt 80 "template-directive attribute renders correctly when it's the only attribute"
+           '(button ((template-directive "disabled")) "Submit")
+           '("<button disabled>Submit</button>"))
+
+(check-fmt 40 "template-directive attribute renders correctly with line wrapping"
+           '(div ((id "long-id-name") (class "multiple classes here") (template-directive "data-custom"))
+             "Content")
+           '("<div id=\"long-id-name\" class="
+             "\"multiple classes here\" data-custom>"
+             "  Content"
+             "</div>\n"))
+
+(check-fmt 80 "multiple template-directive attributes render correctly"
+           '(form ((method "post") (template-directive "novalidate") (template-directive "data-form-type=\"registration\""))
+             (input ((type "text") (template-directive "required")))
+             (button ((type "submit") (template-directive "disabled")) "Submit"))
+           '("<form method=\"post\" novalidate data-form-type=\"registration\">"
+             "  <input type=\"text\" required><button type=\"submit\" disabled>Submit</button>"
+             "</form>\n"))
+
+(check-fmt 80 "template-directive attribute with empty value renders correctly"
+           '(input ((type "checkbox") (template-directive "")))
+           '("<input type=\"checkbox\">"))
+
+(check-fmt 80 "template-directive attribute doesn't affect other boolean attributes"
+           '(input ((type "checkbox") (disabled "") (template-directive "required")))
+           '("<input type=\"checkbox\" disabled required>"))

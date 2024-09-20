@@ -28,16 +28,24 @@
 ;; and value. Each string ("chunk") in the list is considered a discrete “word” for
 ;; line-wrapping purposes
 (define (attr-chunks attrs)
+  (define filtered-attrs
+    (filter (lambda (attr)
+              (not (and (eq? (car attr) 'template-directive)
+                        (string=? (cadr attr) ""))))
+            attrs))
   (for/fold ([chunks '()]
-             [remaining (safe-rest attrs)]
+             [remaining (safe-rest filtered-attrs)]
              #:result (reverse chunks))
-            ([attr (in-list attrs)])
+            ([attr (in-list filtered-attrs)])
     (match-define (list key val) attr)
     (define-values (key-str val-str)
       (cond
         [(boolean-attr? key)
          (values (format (if (null? remaining) "~a>" "~a ") key)
                  "")]
+        [(eq? key 'template-directive)
+         (values val
+                 (if (null? remaining) ">" " "))]
         [else
          (values (format "~a=" key)
                  (format (if (null? remaining) "\"~a\">" "\"~a\" ")
