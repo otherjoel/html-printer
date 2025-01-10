@@ -527,6 +527,21 @@
              "  </article>"
              "</main>\n"))
 
+(check-fmt 20 "Definition lists wrap properly"
+           '(body (article (dl (dt "Term") (dd (p "Def")))))
+           '("<body>"
+             "  <article>"
+             "    <dl>"
+             "      <dt>"
+             "        Term"
+             "      </dt>"
+             "      <dd>"
+             "        <p>Def</p>"
+             "      </dd>"
+             "    </dl>"
+             "  </article>"
+             "</body>\n"))
+
 ;; Broken HTML, not sure what to do with this
 #;(debug '(body (p (em "Hello " (div "World")) "woah")))
   
