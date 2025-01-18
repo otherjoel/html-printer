@@ -553,3 +553,17 @@
              (list (format "<~a>~a"
                            tag
                            (if (or (block? tag) (flow? tag) (eq? tag 'br)) (sys-newline) "")))))
+
+(check-fmt 40 "Aside elements wrap properly"
+           '(body (article (p "One") (aside [[class "me"]] "Two") (aside [[class "me"]] (p "three"))))
+           '("<body>"
+             "  <article>"
+             "    <p>One</p>"
+             "    <aside class=\"me\">"
+             "      Two"
+             "    </aside>"
+             "    <aside class=\"me\">"
+             "      <p>three</p>"
+             "    </aside>"
+             "  </article>"
+             "</body>\n"))
