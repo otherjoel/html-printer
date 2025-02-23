@@ -567,3 +567,19 @@
              "    </aside>"
              "  </article>"
              "</body>\n"))
+
+(check-fmt 40 "Indents for <br> after flow and block close"
+           '(body (table (tr (td "Hi"))) (br) (br) (p "Paragraph") (br))
+           '("<body>"
+             "  <table>"
+             "    <tr>"
+             "      <td>Hi</td>"
+             "    </tr>"
+             "  </table>"
+             "  <br>"
+             "  <br>"
+             "  <p>Paragraph</p>"
+             "  <br>"
+             "  " ;        ← Not the best, but not worth fixing. You put a <br> as the last element
+                  ;          of a block or flow tag, that's a you problem. Fix your ways.
+             "</body>\n"))

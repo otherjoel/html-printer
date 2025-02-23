@@ -90,7 +90,8 @@
   (match v
     [(? null?) prev-token]
     [(list* (and (? symbol?) (? br?)) _)
-     (log-expr break-tag found v prev-token)
+     (log-expr break-tag found v )
+     (when (or (flow-closed? prev-token) (block-closed? prev-token)) (yeet! 'indent))
      (yeet! '(put/wrap "<br>") 'flush 'break/indent)
      'flow-opened] ; hacky
     
@@ -109,9 +110,10 @@
        (for/fold ([last-token 'flow-opened])
                  ([elem (in-list elems)])
          (display-val yeet! elem last-token)))
-     (if (or (block-closed? last-tok) (flow-closed? last-tok))
-         (yeet! '--indent)
-         (yeet! 'flush 'break/--indent))
+     (cond
+       [(or (block-closed? last-tok) (flow-closed? last-tok)) (yeet! '--indent)]
+       [(flow-opened? last-tok) (yeet! 'break/--indent)]
+       [else (yeet! 'flush 'break/--indent)])
      (log-expr flow …closing tag last-tok)
      (yeet! `(put/wrap ,(closer tag))
             'break)
