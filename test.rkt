@@ -8,7 +8,46 @@
          xml)
 
 (provide check-fmt)
-  
+
+;;================================================
+;; Custom element names
+;; https://html.spec.whatwg.org/multipage/custom-elements.html#custom-elements-core-concepts
+
+(check-true (valid-custom-element-name? "my-element"))
+(check-true (valid-custom-element-name? 'my-element))
+(check-true (valid-custom-element-name? "my-complex-element")) ; Multiple hyphens
+(check-true (valid-custom-element-name? "my-element-v2"))      ; With numbers
+(check-true (valid-custom-element-name? "my-element_2"))       ; With underscore
+(check-true (valid-custom-element-name? "my-element.2"))       ; With dot
+(check-true (valid-custom-element-name? "element-"))           ; Ends with hyphen
+(check-true (valid-custom-element-name? "element--test"))      ; Double hyphen
+(check-true (valid-custom-element-name? "café-element"))       ; Latin characters with accents (é = \u00E9)
+(check-true (valid-custom-element-name? "naïve-component"))    ; Latin with diacritic (ï = \u00EF)
+(check-true (valid-custom-element-name? "résumé-widget"))      ; Multiple accented characters
+(check-true (valid-custom-element-name? "björn-element"))      ; Swedish characters (ö = \u00F6)
+(check-true (valid-custom-element-name? "element-ñoño"))       ; Spanish ñ character
+(check-true (valid-custom-element-name? "café·bar-element"))   ; With middle dot (\u00B7)
+(check-true (valid-custom-element-name? "greek-φιλοσοφία"))      ; Greek characters
+(check-true (valid-custom-element-name? "japanese-こんにちは"))  ; Japanese hiragana
+(check-true (valid-custom-element-name? "korean-안녕하세요"))    ; Korean characters
+(check-true (valid-custom-element-name? "thai-สวัสดี"))          ; Thai characters
+(check-true (valid-custom-element-name? "element-ṵ"))          ; Latin with combining marks
+(check-true (valid-custom-element-name? "element-🗂️"))        ; Emoji with variation selector
+(check-true (valid-custom-element-name? "element-﷽"))  ; Arabic ligature (might be out of range)
+
+(check-false (valid-custom-element-name? "element"))           ; No hyphen
+(check-false (valid-custom-element-name? "MyElement"))         ; Uppercase letters
+(check-false (valid-custom-element-name? "my_element"))        ; No hyphen
+(check-false (valid-custom-element-name? "-element"))          ; Starts with hyphen
+(check-false (valid-custom-element-name? "123-element"))       ; Starts with number
+(check-false (valid-custom-element-name? ""))                  ; Empty string
+(check-false (valid-custom-element-name? "my element"))        ; Contains space
+(check-false (valid-custom-element-name? "A-element"))         ; Starts with uppercase
+(check-false (valid-custom-element-name? "my-Element"))        ; Uppercase in second part
+(check-false (valid-custom-element-name? "🙂-element"))        ; Emoji (not in PCENChar ranges)
+
+(check-true (flow? 'my-element))
+
 (if (tidy-version-sufficient?)
     (printf "Test harness using HTML Tidy version ~a for comparison checks\n" (get-tidy-version))
     (printf "No stable release of HTML Tidy >= ~a found, skipping Tidy comparison checks\n"
@@ -582,4 +621,24 @@
              "  <br>"
              "  " ;        ← Not the best, but not worth fixing. You put a <br> as the last element
                   ;          of a block or flow tag, that's a you problem. Fix your ways.
+             "</body>\n"))
+
+(check-fmt 40 "Custom elements wrapped as flow tags"
+           '(body (article (my-element (i "Hello") " World")))
+           '("<body>"
+             "  <article>"
+             "    <my-element>"
+             "      <i>Hello</i> World"
+             "    </my-element>"
+             "  </article>"
+             "</body>\n"))
+
+(check-fmt 40 "Empty custom elements"
+           '(body (article (my-element)))
+           '("<body>"
+             "  <article>"
+             "    <my-element>"
+             "      "
+             "    </my-element>"
+             "  </article>"
              "</body>\n"))

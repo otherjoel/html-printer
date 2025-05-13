@@ -7,7 +7,7 @@
          racket/string
          rackunit)
 
-(provide (all-defined-out) check-exn)
+(provide (all-defined-out) check-exn check-true check-false)
 
 (module+ test)
 
