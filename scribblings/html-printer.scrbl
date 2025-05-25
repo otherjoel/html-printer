@@ -89,6 +89,8 @@ Requires Racket 8.13 or later due to internal use of @racketmodname[racket/mutab
 
  That’s all there is to it, really. But if you want more info, check out the @secref{deets}.
 
+@history[#:changed "1.1" @elem{Added ability to recognize @tech{custom elements}.}]
+
 }
 
 @section[#:tag "deets"]{Crunchy details}
@@ -130,6 +132,20 @@ and indented like everything else. CDATA content is never modified or escaped.
           (define cd (cdata #f #f "<![CDATA[Also some of this & < > ]]>"))
           (display
            (xexpr->html5 #:wrap 20 `(body (article (h1 "Title" ,com) (p ,cd " foo")))))]
+
+The printer recognizes
+@deftech{@hyperlink["https://html.spec.whatwg.org/multipage/custom-elements.html#custom-elements-intro"]{custom
+elements}} as long as their names are spec-conformant. Custom elements are always wrapped/indented
+in the same way as “flow”-type tags like @racketoutput{<article>} and @racketoutput{<section>}:
+
+@margin-note{A custom element must start with a lowercase letter and include at least one hyphen.
+See the
+@hyperlink["https://html.spec.whatwg.org/multipage/custom-elements.html#valid-custom-element-name"]{definition
+of valid custom element names} in the HTML Living Standard for more details.}
+
+@examples[#:eval examps #:label #f
+          (display 
+           (xexpr->html5 '(article (sale-price (p [[class "price-num"]] "$250")))))]
 
 @bold{Differences from XML/XHTML:} Attributes which
 @hyperlink["https://html.spec.whatwg.org/multipage/indices.html#attributes-3"]{the HTML5 spec
