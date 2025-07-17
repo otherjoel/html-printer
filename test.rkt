@@ -581,8 +581,15 @@
              "  </article>"
              "</body>\n"))
 
-;; Broken HTML, not sure what to do with this
-#;(debug '(body (p (em "Hello " (div "World")) "woah")))
+(check-fmt 20 "Tolerate busted/bad HTML structure (flow inside non-flow)"
+           '(body (p (em "Hello " (div "World")) "woah"))
+           '("<body>"
+             "  <p><em>Hello"
+             "    <div>"
+             "      World"
+             "    </div>"
+             "  </em>woah</p>"
+             "</body>\n"))
   
 ; self-closing tags display properly
 (for ([tag (in-list '(area base basefont br col frame hr img input isindex link meta param))])

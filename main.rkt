@@ -76,6 +76,7 @@
 (define (sticky? v) (eq? v 'sticky))
 (define (flow-opened? v) (eq? v 'flow-opened))
 (define (flow-closed? v) (eq? v 'flow-closed))
+(define (flow-any? v) (memq v '(first flow-opened flow-closed block-closed)))
 (define (block-closed? v) (eq? v 'block-closed))
 
 (define break-after-block? (make-parameter #f))
@@ -99,9 +100,15 @@
     [(list (? flow? tag) (list (? attr? attrs) ...) elems ...)
      (log-expr flow starting… tag prev-token)
      (when (add-break? tag prev-token) (yeet! 'break))
-     (when inside-inline?
-       (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
-     (unless (flow-opened? prev-token) (yeet! 'indent))
+     (define weird-flow? (or inside-inline? (not (flow-any? prev-token))))
+     (when weird-flow?
+       (log-err "Flow tag ~a inside block/inline tag; formatting busted!" tag)
+       (when (not (memq prev-token '(block-closed flow-closed)))
+         (yeet! 'flush 'break/++indent)))
+       
+     (unless (or (flow-opened? prev-token) weird-flow?)
+       (yeet! 'indent))
+     
      (yeet! `(put ,(opener tag attrs)))
      (for ([a (in-list (attr-chunks attrs))])
        (yeet! `(put/wrap ,a)))
@@ -115,8 +122,10 @@
        [(flow-opened? last-tok) (yeet! 'break/--indent)]
        [else (yeet! 'flush 'break/--indent)])
      (log-expr flow …closing tag last-tok)
-     (yeet! `(put/wrap ,(closer tag))
-            'break)
+     (yeet! `(put/wrap ,(closer tag)))
+     (if weird-flow?
+         (yeet! 'flush 'break/--indent)
+         (yeet! 'break))
      'flow-closed]
     
     ; block tag
@@ -192,6 +201,8 @@
     ;; This match is never reached while inside <script>, <style> or <pre>
     [(? string? str)
      (log-expr string starting… prev-token str)
+     #; (unless (memq prev-token '(normal sticky))
+          (yeet! 'indent-if-col1))
      (define-values (last-word count)
        (for/fold ([last ""]
                   [count 0]
