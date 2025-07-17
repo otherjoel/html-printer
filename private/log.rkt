@@ -21,7 +21,7 @@
   (log-html-printer-debug (apply format items)))
 
 (define (log-err . items)
-  (log-html-printer-error (apply format items)))
+  (log-html-printer-error (apply format (string-append "ERROR: " (car items)) (cdr items))))
 
 (define (log-msg . items)
   (log-html-printer-info (apply format items)))
@@ -60,7 +60,7 @@
     (cond ;[(number? val) (~r val #:min-width 3)]
       [(mutable-treelist? val) ($mtl val)]
       [else val]))
-  (format "~a:~a" name output))
+  (format "~a: ~v" name output))
 
 (define ($mtl m)
   (apply string-append
