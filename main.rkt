@@ -201,8 +201,6 @@
     ;; This match is never reached while inside <script>, <style> or <pre>
     [(? string? str)
      (log-expr string starting… prev-token str)
-     #; (unless (memq prev-token '(normal sticky))
-          (yeet! 'indent-if-col1))
      (define-values (last-word count)
        (for/fold ([last ""]
                   [count 0]
