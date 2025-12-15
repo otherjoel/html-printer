@@ -102,7 +102,7 @@
      (when (add-break? tag prev-token) (yeet! 'break))
      (define weird-flow? (or inside-inline? (not (flow-any? prev-token))))
      (when weird-flow?
-       (log-err "Flow tag ~a inside block/inline tag; formatting busted!" tag)
+       (log-expr "Flow tag ~a inside block/inline tag (considered weird)" tag)
        (when (not (memq prev-token '(block-closed flow-closed)))
          (yeet! 'flush 'break/++indent)))
        
@@ -133,7 +133,7 @@
      (when (add-break? tag prev-token) (yeet! 'break))
      (log-expr block starting… tag prev-token)
      (when inside-inline?
-       (log-err "Block tag ~a inside inline tag ~a; formatting busted!" tag inside-inline?))
+       (log-expr "Block tag ~a inside inline tag ~a (considered weird)" tag inside-inline?))
      (cond
        [(memq prev-token '(normal sticky)) (yeet! 'flush 'break/indent)]
        [else (unless (flow-opened? prev-token) (yeet! 'indent))])
