@@ -1,0 +1,12 @@
+#lang info
+(define collection "html-printer")
+(define build-deps '("racket-doc"
+                     "scribble-lib"
+                     "txexpr"
+                     "html-printer-lib"))
+(define scribblings '(("scribblings/html-printer.scrbl" ())))
+(define pkg-desc "Business Central REST API client library")
+(define version "0.1")
+(define pkg-authors '(joel))
+(define license '(Apache-2.0 OR MIT))
+(define deps '("base"))
