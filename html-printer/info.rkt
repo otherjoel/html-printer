@@ -1,5 +1,6 @@
 #lang info
 (define collection "html-printer")
+(define implies    '("html-printer-lib"))
 (define build-deps '("racket-doc"
                      "scribble-lib"
                      "txexpr"
