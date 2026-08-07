@@ -1,7 +1,7 @@
 #lang racket/base
 
 (require "main.rkt"
-         "private/test-util.rkt"
+         "tests/test-util.rkt"
          "private/tidy.rkt"
          "private/html-tags.rkt"
          "private/strings.rkt"

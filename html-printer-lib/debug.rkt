@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require "private/test-util.rkt")
+(require "private/debug-util.rkt")
 
 (provide proof
          debug
