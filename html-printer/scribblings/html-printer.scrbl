@@ -260,7 +260,7 @@ Otherwise, the tests will pass without any comparison actually being made.
 
 @subsection{Probing and prodding}
 
-@defmodule[html-printer/debug #:use-sources (html-printer/private/test-util)]
+@defmodule[html-printer/debug #:use-sources (html-printer/private/debug-util)]
 
 I lied at the beginning of these docs when I said this package only provides a single function. Here
 are a couple more, though they will only be interesting to people who really want to kick the tires.
