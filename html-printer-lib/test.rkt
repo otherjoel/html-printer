@@ -111,8 +111,9 @@
              "  </main>"
              "</body>\n"))
 
-;These checks will never succeed because HTML Tidy is not grapheme-aware (as of 5.8.0)
-; (check-matches-tidy? 20 '(p "🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️"))
+(check-matches-tidy? 20 '(p "🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️🧞‍♀️🧝‍♂️🧝‍♀️🧙🏽‍♂️🧚🏻🧟‍♂️🧜🏽‍♀️")) ; a single word: overflows either way
+
+;This check will never succeed because HTML Tidy is not grapheme-aware (as of 5.8.0)
 ; (check-matches-tidy? 20 '(p "Приве́т नमस्ते שָׁלוֹם"))
   
 ;; http://utf8everywhere.org — section 8.3
@@ -162,6 +163,8 @@
              "  </main>"
              "</body>\n"))
 
+(check-matches-tidy? 20 '(p (em "Hello") "World again"))
+
 (check-fmt 20 "linebreaks not inserted where they would introduce whitespace (tag close with only 1 element)"
            (xpr '(p [[class "x x x x x x x x x x x x x x x x x x x x"]] "hi"))
            '("<body>"
@@ -204,8 +207,7 @@
              "three</span>"
              "<i>four</i></p>\n"))
 
-; Tricky…currently the results are functionally the same but not byte-identical
-;(check-matches-tidy? 20 '(p (span "one two three ") (i "four")))
+(check-matches-tidy? 20 '(p (span "one two three ") (i "four")))
   
 (check-fmt 20 "script and style tags are printed without alteration"
            (xpr '(div
@@ -262,11 +264,15 @@
              "    three</pre>"
              "</div>\n"))
 
+(check-matches-tidy? 20 '(div (pre "\none\n  two  \n    three")))
+
 (check-fmt 20 "Pre tags handle contained xexprs"
            '(div (pre "Hello " (i "World")))
            '("<div>"
              "  <pre>Hello <i>World</i></pre>"
              "</div>\n"))
+
+(check-matches-tidy? 20 '(div (pre "Hello " (i "World"))))
 
 (check-fmt 20 "Special characters inside pre tags escaped"
            '(div (pre "< > &"))
@@ -294,6 +300,8 @@
              "    b</p>"
              "  </header>"
              "</body>\n"))
+
+(check-matches-tidy? 20 '(body () (header () (h1 () "Title") (p () "a" (br ()) "b"))))
   
 (check-fmt 20 "<head> wraps/indents correctly"
            '(html (head (link [[rel "stylesheet"] [href "style.css"]])
@@ -490,9 +498,13 @@
            '(label (input [[type "checkbox"] [disabled ""]]) "Cheese")
            '("<label><input type=\"checkbox\" disabled>Cheese</label>"))
 
+(check-matches-tidy? 80 '(label (input [[type "checkbox"] [disabled ""]]) "Cheese"))
+
 (check-fmt 80 "Whitespace preserved after inline element"
            '(label (input [[type "checkbox"] [disabled ""]]) " Cheese")
            '("<label><input type=\"checkbox\" disabled> Cheese</label>"))
+
+(check-matches-tidy? 80 '(label (input [[type "checkbox"] [disabled ""]]) " Cheese"))
 
 (check-fmt 20 "Comments wrap and indent properly inside flows and blocks"
            `(body (main ,(comment "this is\na comment")
@@ -614,6 +626,8 @@
              "  </article>"
              "</body>\n"))
 
+(check-matches-tidy? 40 '(body (article (p "One") (aside [[class "me"]] "Two") (aside [[class "me"]] (p "three")))))
+
 (check-fmt 40 "Indents for <br> after flow and block close"
            '(body (table (tr (td "Hi"))) (br) (br) (p "Paragraph") (br))
            '("<body>"
@@ -655,10 +669,14 @@
            '("<p>abcdefghijklm"
              "nop</p>\n"))
 
+(check-matches-tidy? 16 '(p "abcdefghijklm nop"))
+
 (check-fmt 16 "Lines may fill the wrap width exactly (word preceded by a space)"
            '(p "abcdef ghijkl m")
            '("<p>abcdef ghijkl"
              "m</p>\n"))
+
+(check-matches-tidy? 16 '(p "abcdef ghijkl m"))
 
 (check-fmt 12 "Whitespace-only strings between inline elements allow wrapping"
            '(p (em "aaa") " " (em "bbb") " " (em "ccc"))
@@ -673,6 +691,8 @@
            '(p "aaaa" " " "bbbb" " " "cccc")
            '("<p>aaaa bbbb"
              "cccc</p>\n"))
+
+(check-matches-tidy? 12 '(p "aaaa" " " "bbbb" " " "cccc"))
 
 (check-fmt 25 "Newline strings between inline elements allow wrapping"
            '(p (a ((href "x")) "one") "\n" (a ((href "y")) "two") "\n" (a ((href "z")) "three"))
@@ -743,17 +763,23 @@
              "  </div>"
              "</body>\n"))
 
+(check-matches-tidy? 12 '(body (div (div (div (div (div (p "word word word"))))))))
+
 (check-fmt 20 "Whitespace containing newlines after a comment is collapsed, not printed verbatim"
            `(p "Hi" ,(comment "x") " \n y")
            '("<p>Hi<!--x--> y</p>\n"))
 
-(check-fmt 40 "Closing tag of <pre> is indented when content ends with space + newline"
+(check-matches-tidy? 20 `(p "Hi" ,(comment "x") " \n y"))
+
+(check-fmt 40 "Closing tag of <pre> is at column 1 when content ends with a newline"
            '(div (pre "line one\nline two \n"))
            '("<div>"
              "  <pre>line one"
              "line two "
-             "  </pre>"
+             "</pre>"
              "</div>\n"))
+
+(check-matches-tidy? 40 '(div (pre "line one\nline two \n")))
 
 (check-fmt 40 "Closing tag of <pre> is glued when content does not end with a newline"
            '(div (pre "line one\nline two"))
@@ -761,3 +787,5 @@
              "  <pre>line one"
              "line two</pre>"
              "</div>\n"))
+
+(check-matches-tidy? 40 '(div (pre "line one\nline two")))
