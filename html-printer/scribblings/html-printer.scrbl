@@ -24,8 +24,10 @@ it all on one line that scrolls horizontally forever?
 This package provides a single function — @racket[xexpr->html5] — for converting X-expressions to
 strings of HTML. Unlike other functions which can be used for this purpose, this one is focused on a
 tidy presentation of HTML5 content specifically. It indents and wraps lines, allowing you to set the
-width of the output, while ensuring line breaks aren’t placed where they would create syntactic
-difference from the input. It favors HTML5 syntax over XML syntax in some cases.
+width of the output. Line breaks are only ever placed where the input already contains whitespace,
+or where added whitespace has no effect (such as directly after a block-level opening tag), so the
+wrapped output renders exactly like the unwrapped input. It favors HTML5 syntax over XML syntax in
+some cases.
 
 This package is also Unicode-aware, measuring line length in graphemes rather than characters. So,
 for example the emoji 🧝‍♂️ — which actually consists of four Unicode “characters” — is counted
@@ -34,7 +36,7 @@ as having length 1 rather than 4.
 If you encounter a bug, please open an issue on
 @hyperlink["https://github.com/otherjoel/html-printer"]{the GitHub repo}.
 
-Requires Racket 8.13 or later due to internal use of @racketmodname[racket/mutable-treelist].
+Requires Racket 8.13 or later.
 
 @defproc[(xexpr->html5 [xpr xexpr?] 
                        [#:wrap wrap-col exact-positive-integer? 100]
@@ -42,7 +44,9 @@ Requires Racket 8.13 or later due to internal use of @racketmodname[racket/mutab
 
  Converts @racket[_xpr] to a string of HTML, nicely wrapped and indented, ready for consumption.
  Leave @racket[_wrap-col] at its default of 100 columns, or shrink it down hard to test the
- line-wrapping algorithm.
+ line-wrapping algorithm. No line will be longer than @racket[_wrap-col] columns unless it consists
+ of a single run that cannot be broken, such as a long word or an attribute value, and no line ends
+ in whitespace.
 
  @examples[#:eval examps
            (display
@@ -95,7 +99,7 @@ Requires Racket 8.13 or later due to internal use of @racketmodname[racket/mutab
 
 @section[#:tag "deets"]{Crunchy details}
 
-This package includes @hyperlink["https://github.com/otherjoel/html-printer/blob/main/test.rkt"]{an
+This package includes @hyperlink["https://github.com/otherjoel/html-printer/blob/main/html-printer-lib/test.rkt"]{an
  extensive set of unit tests}. In addition to preventing regressions, these nicely illustrate the
 printer’s expected behavior in a variety of edge cases.
 
@@ -123,6 +127,16 @@ wrapped; the contents of @racketoutput{<pre>} tags @emph{are} escaped, but never
            (xexpr->html5 '(body (style "/* No escaping! & < > \" */")
                                 (script "/* No escaping! & < > \" */")
                                 (pre "Escaping! & < > \""))))]
+
+Nothing is ever added inside a @racketoutput{<pre>} tag either. When its content ends with a line
+break, the closing tag is placed at the start of the next line rather than at the current indent,
+because indentation there would become part of the preformatted text. The closing tags of
+@racketoutput{<script>} and @racketoutput{<style>} are indented as usual:
+
+@examples[#:eval examps #:label #f
+          (display
+           (xexpr->html5 '(body (script "console.log(1);\n")
+                                (pre "one\ntwo\n"))))]
 
 The printer can handle XML @racket[comment] and @racket[cdata] elements. Comments are line-wrapped
 and indented like everything else. CDATA content is never modified or escaped.
@@ -233,10 +247,17 @@ original purpose was to correct errors in HTML files written by hand in text edi
 Tidy is a much more comprehensive tool than this one and much more configurable. It always produces
 correctly line-wrapped and indented HTML, though this is only part of its functionality.
 
-In terms of formatting functionality specifically, there are only a couple of significant difference
-betweeen Tidy and this package:
+There are a few significant differences between Tidy and this package:
 
 @itemlist[
+
+ @item{HTML Tidy parses its input the way a browser would and then @emph{repairs} it. It moves
+  @racketoutput{<style>} tags into the @racketoutput{<head>}, inserts a missing
+  @racketoutput{<title>}, discards elements that are not allowed where they appear, removes empty
+  elements such as an empty @racketoutput{<figcaption>}, converts character entities to literal
+  characters, and normalizes attribute values. This library never alters the document: it prints
+  exactly the elements, attributes and text it is given, only wrapped and indented. Structure that
+  is not valid HTML, such as a @racketoutput{<div>} inside a @racketoutput{<p>}, is printed as-is.}
 
  @item{HTML Tidy still counts line width by characters rather than graphemes, so it may wrap
 lines earlier than necessary when they contain emoji or other multi-byte graphemes.}
