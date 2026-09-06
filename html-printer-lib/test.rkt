@@ -303,7 +303,7 @@
              "<html>"
              "  <head>"
              "    <link rel="
-             "    \"stylesheet\" "
+             "    \"stylesheet\""
              "    href="
              "    \"style.css\">"
              "    <meta charset="
@@ -520,7 +520,8 @@
              "  <main>"
              "    <p>Hi</p>"
              "    <!--this is a comment-->"
-             "    <p><span>1</span><!--another--><em>2</em></p>"
+             "    <p>"
+             "    <span>1</span><!--another--><em>2</em></p>"
              "    <blockquote>"
              "      <!--third comment-->"
              "      <p>hello</p>"
@@ -533,8 +534,7 @@
            '("<main>"
              "  <article>"
              "    <p>Hi <!--a"
-             "    comment-->"
-             "    hi</p>"
+             "    comment-->hi</p>"
              "  </article>"
              "</main>\n"))
   
@@ -626,8 +626,6 @@
              "  <br>"
              "  <p>Paragraph</p>"
              "  <br>"
-             "  " ;        ← Not the best, but not worth fixing. You put a <br> as the last element
-                  ;          of a block or flow tag, that's a you problem. Fix your ways.
              "</body>\n"))
 
 (check-fmt 40 "Custom elements wrapped as flow tags"
@@ -645,7 +643,121 @@
            '("<body>"
              "  <article>"
              "    <my-element>"
-             "      "
              "    </my-element>"
              "  </article>"
              "</body>\n"))
+
+;;================================================
+;; Regression tests for issues found in the original printer
+
+(check-fmt 16 "Lines may fill the wrap width exactly (first word glued to opening tag)"
+           '(p "abcdefghijklm nop")
+           '("<p>abcdefghijklm"
+             "nop</p>\n"))
+
+(check-fmt 16 "Lines may fill the wrap width exactly (word preceded by a space)"
+           '(p "abcdef ghijkl m")
+           '("<p>abcdef ghijkl"
+             "m</p>\n"))
+
+(check-fmt 12 "Whitespace-only strings between inline elements allow wrapping"
+           '(p (em "aaa") " " (em "bbb") " " (em "ccc"))
+           '("<p>"
+             "<em>aaa</em>"
+             "<em>bbb</em>"
+             "<em>ccc</em></p>\n"))
+
+(check-matches-tidy? 30 '(p (em "aaa") " " (em "bbb") " " (em "ccc")))
+
+(check-fmt 12 "Whitespace-only strings between plain strings allow wrapping"
+           '(p "aaaa" " " "bbbb" " " "cccc")
+           '("<p>aaaa bbbb"
+             "cccc</p>\n"))
+
+(check-fmt 25 "Newline strings between inline elements allow wrapping"
+           '(p (a ((href "x")) "one") "\n" (a ((href "y")) "two") "\n" (a ((href "z")) "three"))
+           '("<p><a href=\"x\">one</a>"
+             "<a href=\"y\">two</a>"
+             "<a href=\"z\">three</a></p>\n"))
+
+(check-matches-tidy? 30 '(p (a ((href "x")) "one") "\n" (a ((href "y")) "two") "\n" (a ((href "z")) "three")))
+
+(check-fmt 12 "Inline closing tag stays glued to its content when trailing whitespace is hoisted"
+           '(p (em "aaa ") (em "bbb ") (em "ccc"))
+           '("<p>"
+             "<em>aaa</em>"
+             "<em>bbb</em>"
+             "<em>ccc</em></p>\n"))
+
+(check-matches-tidy? 30 '(p (em "aaa ") (em "bbb ") (em "ccc")))
+
+(check-fmt 40 "Flow element after text inside a flow parent is indented as a sibling of the text"
+           '(ul (li "Item" (ul (li "sub"))))
+           '("<ul>"
+             "  <li>"
+             "    Item"
+             "    <ul>"
+             "      <li>"
+             "        sub"
+             "      </li>"
+             "    </ul>"
+             "  </li>"
+             "</ul>\n"))
+
+(check-fmt 40 "Text following a closed block inside a flow is indented"
+           '(body (div (p "para") "bye" (p "again")))
+           '("<body>"
+             "  <div>"
+             "    <p>para</p>"
+             "    bye"
+             "    <p>again</p>"
+             "  </div>"
+             "</body>\n"))
+
+(check-fmt 20 "No trailing spaces when wrapping between attributes"
+           '(div (a ((href "x") (class "yyyyy") (id "zzzzz")) "t"))
+           '("<div>"
+             "  <a href=\"x\" class="
+             "  \"yyyyy\" id="
+             "  \"zzzzz\">t</a>"
+             "</div>\n"))
+
+(check-matches-tidy? 20 '(div (a ((href "x") (class "yyyyy") (id "zzzzz")) "t")))
+
+(check-fmt 12 "Indent deeper than the wrap width never produces blank lines"
+           '(body (div (div (div (div (div (p "word word word")))))))
+           '("<body>"
+             "  <div>"
+             "    <div>"
+             "      <div>"
+             "        <div>"
+             "          <div>"
+             "            <p>"
+             "            word"
+             "            word"
+             "            word</p>"
+             "          </div>"
+             "        </div>"
+             "      </div>"
+             "    </div>"
+             "  </div>"
+             "</body>\n"))
+
+(check-fmt 20 "Whitespace containing newlines after a comment is collapsed, not printed verbatim"
+           `(p "Hi" ,(comment "x") " \n y")
+           '("<p>Hi<!--x--> y</p>\n"))
+
+(check-fmt 40 "Closing tag of <pre> is indented when content ends with space + newline"
+           '(div (pre "line one\nline two \n"))
+           '("<div>"
+             "  <pre>line one"
+             "line two "
+             "  </pre>"
+             "</div>\n"))
+
+(check-fmt 40 "Closing tag of <pre> is glued when content does not end with a newline"
+           '(div (pre "line one\nline two"))
+           '("<div>"
+             "  <pre>line one"
+             "line two</pre>"
+             "</div>\n"))
