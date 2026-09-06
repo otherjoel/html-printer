@@ -2,8 +2,7 @@
 
 (require (for-syntax racket/base)
          racket/list
-         racket/logging
-         racket/mutable-treelist)
+         racket/logging)
 
 (provide html-printer-logger
          logging-enabled?
@@ -56,18 +55,7 @@
      (format "~a└─ ~a" (make-string (* 3 nestlevel) #\space) who)]))
 
 (define ($var name val)
-  (define output
-    (cond ;[(number? val) (~r val #:min-width 3)]
-      [(mutable-treelist? val) ($mtl val)]
-      [else val]))
-  (format "~a: ~v" name output))
-
-(define ($mtl m)
-  (apply string-append
-         (add-between (map (lambda (v) (format "~v" v)) (mutable-treelist->list m)) '(",")
-                      #:before-first '("{")
-                      #:after-last '("}")
-                      #:splice? #t)))
+  (format "~a: ~v" name val))
 
 (define ($vals lst)
   (apply string-append

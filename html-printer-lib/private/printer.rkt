@@ -102,7 +102,8 @@
          (set! col (+ 1 (string-grapheme-count tail)))])))
 
   (define (handle! tok)
-    (log-printer 1 token _ tok col line-start? pending cluster-width indent-level)
+    (unless (list? tok)
+      (log-printer 1 token _ tok col line-start? pending cluster-width indent-level))
     (match tok
       [(text s) (text! s)]
       [(raw s indent?) (raw! s indent?)]
