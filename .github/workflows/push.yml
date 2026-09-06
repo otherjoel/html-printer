@@ -26,6 +26,8 @@ jobs:
           version: ${{ matrix.racket-version }}
       - name: Install package with dependencies
         run: raco pkg install --auto --batch --link html-printer-lib/
+      - name: Install HTML Tidy (the tests compare output against it when a new enough version is found)
+        run: sudo apt-get update && sudo apt-get install -y tidy && tidy --version
       - name: Run tests
         run: raco test -c html-printer
       - name: Build docs
