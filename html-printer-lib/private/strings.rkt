@@ -4,7 +4,6 @@
          xml)
 
 (provide whitespace?
-         linebreak?
          ->string
          words
          newline-convention
@@ -12,12 +11,7 @@
          sys-add-empty-lines
          escape
          string-element-table
-         attribute-table
-         breakpoint
-         (rename-out [_bp? breakpoint?]))
-
-(struct _bp ())
-(define breakpoint (_bp))
+         attribute-table)
 
 (define newline-convention (make-parameter (system-type)))
 
@@ -30,19 +24,16 @@
   (regexp-replace* (regexp (format "~a~a" nl nl)) str (format "~a ~a" nl nl)))
 
 ;; Predicate returning true if val is a string consisting entirely of whitespace (or nothing).
-;; NB: A non-breaking space is not counted as whitespace.
+;; Only ASCII whitespace counts, as in HTML. NB: A non-breaking space is not counted as whitespace.
 (define (whitespace? v)
   (match v
     ["" #t]
     [(pregexp #px"^\\s+$") #t]
     [_ #f]))
 
-;; Test if a string consists only of \r or \n.
-(define (linebreak? s)
-  (regexp-match? #rx"^[\r\n]+$" s))
-
+;; Split a string into alternating runs of whitespace and non-whitespace characters.
 (define (words s)
-  (regexp-match* #px"(?:\r\n|\n|\r|\\s+|\\S+)" s))
+  (regexp-match* #px"\\s+|\\S+" s))
 
 ;; Coerce to string; as HTML entity when necessary
 (define (->string v)
@@ -63,10 +54,6 @@
   (check-false (whitespace? " x ") "a single non-whitespace character means whole string is not whitespace")
   (check-false (whitespace? (string->symbol " ")) "non-strings are never whitespace")
 
-  (check-true (linebreak? "\r\n") "carriage returns and newlines are line breaks")
-  (check-true (linebreak? "\r\r\n\r\n\n") "CR and LF in any amount and order are line breaks")
-  (check-false (linebreak? " \r\n") "any non-CRLF character disqualifies string as a line break")
-
   (check-equal? (words "This is one, this is another...")
                 '("This" " " "is" " " "one," " " "this" " " "is" " " "another..."))
   (check-equal? (words "Must pick/choose") '("Must" " " "pick/choose"))
@@ -75,7 +62,9 @@
   (check-equal? (words "wow! 5% #hashtag joe@mail.com this^^^")
                 '("wow!" " " "5%" " " "#hashtag" " " "joe@mail.com" " " "this^^^"))
   (check-equal? (words "\r\n\n\r\r\n\rHello World\nFoo")
-                '("\r\n" "\n" "\r" "\r\n" "\r" "Hello" " " "World" "\n" "Foo"))
+                '("\r\n\n\r\r\n\r" "Hello" " " "World" "\n" "Foo")
+                "line breaks are whitespace like any other")
+  (check-equal? (words "") '())
   )
 
 ;;
