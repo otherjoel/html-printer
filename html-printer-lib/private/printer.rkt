@@ -91,15 +91,23 @@
       (when line-start?
         (if indent? (start-line!) (set! line-start? #f)))
       (write! s)
-      (define tail (car (regexp-match #rx"[^\r\n]*$" s)))
+      ;; Where the last line of s begins: just after its last line break, or 0 if it has none.
+      ;; A backward scan rather than a regexp such as #rx"[^\r\n]*$", which backtracks over
+      ;; every line it fails to anchor and so takes time quadratic in the line length.
+      (define tail-start
+        (let loop ([i (string-length s)])
+          (cond
+            [(zero? i) 0]
+            [(memv (string-ref s (sub1 i)) '(#\newline #\return)) i]
+            [else (loop (sub1 i))])))
       (cond
-        [(= (string-length tail) (string-length s)) ; no line breaks inside s
+        [(zero? tail-start) ; no line breaks inside s
          (set! col (+ col (string-grapheme-count s)))]
-        [(equal? tail "")
+        [(= tail-start (string-length s))
          (set! col 1)
          (set! line-start? #t)]
         [else
-         (set! col (+ 1 (string-grapheme-count tail)))])))
+         (set! col (+ 1 (string-grapheme-count (substring s tail-start))))])))
 
   (define (handle! tok)
     (unless (list? tok)

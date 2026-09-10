@@ -39,9 +39,16 @@
 (define-check (check-matches-tidy? width x)
   (when (tidy-version-sufficient?)
     (define my-result (xexpr->html5 (xpr x) #:wrap width))
-    (define tidy-result (string-append (tidy x #:wrap width) "\n"))
-    (unless (equal? my-result tidy-result)
-      (with-check-info (['message (string-info "writer result does not match expected tidy output")]
-                        ['|writer result| (string-info (w/rule width my-result))]
-                        ['|tidy output| (string-info (w/rule width tidy-result))])
-        (fail-check)))))
+    (define tidy-output (tidy x #:wrap width))
+    (cond
+      [(not tidy-output)
+       (with-check-info (['message (string-info "tidy output did not contain the expected element")]
+                         ['|writer result| (string-info (w/rule width my-result))])
+         (fail-check))]
+      [else
+       (define tidy-result (string-append tidy-output "\n"))
+       (unless (equal? my-result tidy-result)
+         (with-check-info (['message (string-info "writer result does not match expected tidy output")]
+                           ['|writer result| (string-info (w/rule width my-result))]
+                           ['|tidy output| (string-info (w/rule width tidy-result))])
+           (fail-check)))])))

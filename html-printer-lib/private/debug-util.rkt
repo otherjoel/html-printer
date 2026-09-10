@@ -44,8 +44,12 @@
     [(tidy-version-sufficient?)
      (printf "Tidy ~a found\n" (get-tidy-version))
      (define my-result (xexpr->html5 (xpr x) #:wrap width))
-     (define tidy-result (string-append (tidy x #:wrap width) "\n"))
+     (define tidy-output (tidy x #:wrap width))
+     (define tidy-result (and tidy-output (string-append tidy-output "\n")))
      (cond
+       [(not tidy-result)
+        (printf "Tidy output did not contain the expected element\nxexpr->html5 result:\n")
+        (display (w/rule width my-result))]
        [(equal? my-result tidy-result)
         (printf "Results match:\n")
         (display (w/rule width my-result))]

@@ -27,8 +27,8 @@
 ;;
 
 (define minimum-tidy-version "5.8.0")
-(define tidy-path (make-parameter #f (λ (v) (_unset-tidy-version!) v)))
-(define tidy-options (make-parameter "-quiet -indent --wrap-attributes no --tidy-mark no"))
+(define tidy-path (make-parameter #f))
+(define tidy-options (make-parameter '("-quiet" "-indent" "--wrap-attributes" "no" "--tidy-mark" "no")))
 
 ;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ;; HTML Tidy commands and version checks
@@ -36,70 +36,62 @@
 
 ;; Return the first one of
 ;;  • tidy-path (parameter)
-;;  • cached path from previous result
 ;;  • HTML_TIDY_PATH environment variable
 ;;  • "tidy" executable on system PATH
 ;;
-;; …that points to an existing file for which the user has execute permissions.
+;; …that points to an existing file for which the user has execute permissions, or #f if none does.
+;; The environment/PATH search is done at most once per process.
 ;;
-(define _tidy-path/param-or-cached
-  (let ([tp #f])
-    (define (maybe-executable p)
-      (and (non-empty-string? p)
+(define resolve-tidy-path
+  (let ([searched? #f]
+        [found #f])
+    (define (executable p)
+      (and (or (path? p) (non-empty-string? p))
            (file-exists? p)
            (member 'execute (file-or-directory-permissions p))
            p))
     (lambda ()
-      (cond
-        [(maybe-executable (tidy-path))]
-        [tp]
-        [else
-         (set! tp (or (maybe-executable (getenv "HTML_TIDY_PATH"))
-                      (match (find-executable-path "tidy")
-                        [(? path? p) (path->string p)] [_ ""])))
-         tp]))))
+      (or (executable (tidy-path))
+          (begin
+            (unless searched?
+              (set! searched? #t)
+              (set! found (or (executable (getenv "HTML_TIDY_PATH"))
+                              (find-executable-path "tidy"))))
+            found)))))
 
-;; Zero-arity functions for getting the Tidy version & testing it for sufficiency
-;; Responses are cached; cache is invalidated when tidy-path parameter changes (guard function above)
-(define-values (get-tidy-version
-                tidy-version-sufficient?
-                _unset-tidy-version!)
-  (let ([tidy-version #f]
-        [version-sufficient-flag #f]) ; #f if not yet checked; 'yes or 'no otherwise
-    (define (_getv)
-      (cond
-        [tidy-version]
-        [else
-         (define v-str (try-extract-version (try-tidy-version-cmd)))
-         (set! tidy-version (or v-str "0.0.0"))
-         tidy-version]))
-    (define (_vs?)
-      (case version-sufficient-flag
-        [(#f)
-         (define cmp
-           (and (version>=? (_getv) minimum-tidy-version)
-                (even? (minor-version tidy-version)))) ; even minor = stable release
-         (set! version-sufficient-flag (if cmp 'yes 'no))
-         cmp]
-        [(yes) #t]
-        [(no) #f]))
-    (define (_unset!) ; invalidate cache
-      (set! tidy-version #f)
-      (set! version-sufficient-flag #f))
-    (values _getv _vs? _unset!)))
+;; Version string of the resolved Tidy executable, or "0.0.0" if none was found.
+;; The result is cached together with the path it came from, so a change to the tidy-path
+;; parameter (including entering or leaving a parameterize) triggers a fresh probe.
+(define get-tidy-version
+  (let ([cached-path #f]
+        [cached-version #f])
+    (lambda ()
+      (define p (resolve-tidy-path))
+      (unless (and cached-version (equal? p cached-path))
+        (set! cached-path p)
+        (set! cached-version (or (and p (try-extract-version (run-tidy p "--version")))
+                                 "0.0.0")))
+      cached-version)))
 
-(define (try-tidy-version-cmd)
-  (match (_tidy-path/param-or-cached)
-    [(? non-empty-string? tp)
-     (with-output-to-string (lambda () (system (format "~a --version" tp))))]
-    [_ #f]))
+;; Stable release (even minor version) of Tidy >= minimum-tidy-version available?
+(define (tidy-version-sufficient?)
+  (define v (get-tidy-version))
+  (and (version>=? v minimum-tidy-version)
+       (even? (minor-version v))))
+
+;; Run Tidy with the given arguments; return its standard output as a string.
+;; Standard input comes from current-input-port; standard error is discarded.
+(define (run-tidy p . args)
+  (parameterize ([current-error-port (open-output-nowhere)])
+    (with-output-to-string (lambda () (apply system* p args)))))
 
 ;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ;; HTML Tidy interface
 ;;
 
 ;; X-expression → HTML string (output of HTML tidy)
-;;                or #f if a stable release of Tidy >= 5.8.0 is not available.
+;;                or #f if a stable release of Tidy >= 5.8.0 is not available,
+;;                or if Tidy's output does not contain the #:extract-tag element.
 ;;
 ;; The output inside the first matching #:extract-tag is returned.
 (define (tidy xp
@@ -107,15 +99,13 @@
               #:wrap [wrap-col 100])
   (cond
     [(tidy-version-sufficient?)
-     (define tp (_tidy-path/param-or-cached))
-     (define opts
-       (format "~a --wrap ~a" (tidy-options) wrap-col))
      (define result
        (parameterize ([current-input-port (open-input-string (htmlify xp))])
-         (with-output-to-string
-           (lambda ()
-             (system (format "~a ~a" tp opts))))))
-     (car (regexp-match (regexp (format "(<~a>.+</~a>)" tag tag)) result))]
+         (apply run-tidy (resolve-tidy-path)
+                (append (tidy-options) (list "--wrap" (number->string wrap-col))))))
+     (match (regexp-match (regexp (format "(<~a>.+</~a>)" tag tag)) result)
+       [(list m _) m]
+       [_ #f])]
     [else #f]))
 
 ;; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
