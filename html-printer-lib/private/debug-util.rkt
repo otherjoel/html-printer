@@ -31,11 +31,12 @@
 (define (proof v #:wrap [wrap 20] #:add-breaks? [br? #t])
   (display (w/rule wrap (xexpr->html5 v #:wrap wrap #:add-breaks? br?))))
 
-;; Print v as HTML and show all the debug-level logging
-(define (debug v #:wrap [wrap 20] #:add-breaks? [br? #t])
+;; Print v as HTML and show the debug-level logging for the selected phases
+(define (debug v #:wrap [wrap 20] #:add-breaks? [br? #t] #:show [phases logging-phases])
   (display
    (w/rule wrap
            (logging-to-stderr
+            #:show phases
             (lambda () (parameterize ([logging-enabled? #t])
                          (xexpr->html5 v #:wrap wrap #:add-breaks? br?)))))))
 

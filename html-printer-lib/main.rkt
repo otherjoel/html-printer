@@ -98,60 +98,61 @@
     (when (and add-breaks? prev-block? (not (memq (symbol-downcase tag) '(meta link title))))
       (emit! 'blank)))
 
-  (define (walk-children elems parent)
+  (define (walk-children elems parent depth)
     (for/fold ([prev-block? #f]) ([elem (in-list elems)])
-      (walk elem parent prev-block?)))
+      (walk elem parent prev-block? depth)))
 
   ;; parent is the kind of the enclosing element: 'top, 'flow, 'block or 'inline.
   ;; prev-block? is #t if the previous sibling ended with a hard line break.
+  ;; depth is the nesting depth of v, used only for indenting the debug log.
   ;; Returns the value of prev-block? for the next sibling.
-  (define (walk v parent prev-block?)
+  (define (walk v parent prev-block? depth)
     (match v
       [(? null?) prev-block?]
 
       [(list* (and (? symbol?) (? br?)) _)
-       (log-expr break-tag found v)
+       (log-expr depth br)
        (emit! 'softbreak (text "<br>") 'newline)
        #f]
 
       ; flow tag
       [(list (? flow? tag) (list (? attr? attrs) ...) elems ...)
-       (log-expr flow starting… tag parent prev-block?)
+       (log-expr depth flow tag parent prev-block?)
        (maybe-blank! tag prev-block?)
        ;; A flow tag inside a block or inline tag (bad HTML, but tolerated) is indented relative
        ;; to the line holding its parent
        (define nested? (memq parent '(block inline)))
        (when nested?
-         (log-expr flow "inside block/inline tag (considered weird)" tag)
+         (log-expr depth flow "inside block/inline tag (considered weird)" tag)
          (emit! 'indent+))
        (emit! 'newline)
        (apply emit! (opener-tokens tag attrs))
        (emit! 'indent+ 'newline)
-       (walk-children elems 'flow)
-       (log-expr flow …closing tag)
+       (walk-children elems 'flow (add1 depth))
+       (log-expr depth /flow tag)
        (emit! 'indent- 'newline (text (closer tag)) 'newline)
        (when nested? (emit! 'indent-))
        #t]
 
       ; block tag
       [(list (? block? tag) (list (? attr? attrs) ...) elems ...)
-       (log-expr block starting… tag parent prev-block?)
+       (log-expr depth block tag parent prev-block?)
        (maybe-blank! tag prev-block?)
        (when (eq? parent 'inline)
-         (log-expr block "inside inline tag (considered weird)" tag))
+         (log-expr depth block "inside inline tag (considered weird)" tag))
        (emit! 'newline)
        (apply emit! (opener-tokens tag attrs))
        (emit! 'softbreak)
-       (walk-children elems 'block)
+       (walk-children elems 'block (add1 depth))
        ;; An empty block keeps its closing tag glued to the opening tag
        (pop-softbreak!)
-       (log-expr block …closing tag)
+       (log-expr depth /block tag)
        (emit! (text (closer tag)) 'newline)
        #t]
 
       ; script, style, pre: contents printed verbatim (escaped in the case of pre)
       [(list (? preserve-contents? tag) (list (? attr? attrs) ...) elems ...)
-       (log-expr preserve starting… tag parent prev-block?)
+       (log-expr depth preserve tag parent prev-block?)
        (maybe-blank! tag prev-block?)
        (emit! 'newline)
        (apply emit! (opener-tokens tag attrs))
@@ -162,7 +163,7 @@
                                 (escape elem string-element-table)
                                 (->string elem))))
                    #f))
-       (log-expr preserve …closing tag)
+       (log-expr depth /preserve tag)
        ;; When the content ends with a newline, </script> and </style> are indented, but </pre>
        ;; goes at column 1: any indent there would be part of the preformatted content
        (emit! (raw (closer tag) (not pre?)) 'newline)
@@ -170,25 +171,25 @@
 
       ; inline tag
       [(list (? symbol? tag) (list (? attr? attrs) ...) elems ...)
-       (log-expr inline starting… tag parent prev-block?)
+       (log-expr depth inline tag parent prev-block?)
        (maybe-blank! tag prev-block?)
        (apply emit! (opener-tokens tag attrs))
-       (walk-children elems 'inline)
+       (walk-children elems 'inline (add1 depth))
        ;; Trailing whitespace inside an inline tag is moved after the closing tag, so that
        ;; <em>word </em> becomes <em>word</em> (and the closing tag stays glued to the word)
        (define popped? (pop-space!))
-       (log-expr inline …closing tag popped?)
+       (log-expr depth /inline tag popped?)
        (emit! (text (closer tag)))
        (when popped? (emit! 'space))
        #f]
 
       ; no attributes = send it through again
       [(list* (? symbol? tag) elems)
-       (walk `(,tag () ,@elems) parent prev-block?)]
+       (walk `(,tag () ,@elems) parent prev-block? depth)]
 
       ;; Strings are split into words and whitespace; a line may break at any whitespace
       [(? string? str)
-       (log-expr string found parent prev-block? str)
+       (log-expr depth string str parent prev-block?)
        (for ([word (in-list (words str))])
          (emit! (if (whitespace? word) 'space (text (escape word string-element-table)))))
        (if (whitespace? str) prev-block? #f)]
@@ -196,7 +197,7 @@
       ;; Comments are wrapped like text. A comment that starts a line (first thing after a flow tag
       ;; opens, or after a block-level sibling) gets its own line(s); anywhere else it is inline.
       [(? comment? c)
-       (log-expr comment found parent prev-block?)
+       (log-expr depth comment parent prev-block?)
        (define own-line? (and (pair? acc) (eq? (car acc) 'newline)))
        ;; A line break directly after a comment adds no significant whitespace if there was
        ;; already whitespace directly before it (the two collapse together)
@@ -211,14 +212,14 @@
        prev-block?]
 
       [(or (? symbol? v) (? exact-positive-integer? v))
-       (log-expr entity found v)
+       (log-expr depth entity v)
        (emit! (text (->string v)))
        #f]
 
       ;; Anything else (CDATA, processing instructions…) is printed as-is, as one unbreakable
       ;; chunk. As with comments, a break directly after it is harmless if whitespace preceded it.
       [(? xexpr? v)
-       (log-expr other found v)
+       (log-expr depth other v)
        (define breakable-after? (after-space?))
        (emit! (text (->string v)))
        (when breakable-after? (emit! 'softbreak))
@@ -229,7 +230,7 @@
                               "not a valid element (= txexpr, string, symbol, character integer, CDATA, or comment"
                               "value" v)]))
 
-  (walk v 'top #f)
+  (walk v 'top #f 0)
   (reverse acc))
 
 (define (xexpr->html5 v #:wrap [wrap 100] #:add-breaks? [add-breaks? #f])
@@ -237,5 +238,8 @@
     (λ ()
       (when (and (pair? v) (symbol? (car v)) (eq? 'html (symbol-downcase (car v))))
         (displayln "<!DOCTYPE html>"))
+      (log-expr 0 xexpr->html5 wrap add-breaks?)
+      (define tokens (xexpr->tokens v add-breaks?))
+      (and (logging-enabled?) (log-tokens (map token->string tokens)))
       (define print! (make-wrapping-printer #:wrap-at wrap))
-      (print! (xexpr->tokens v add-breaks?) 'flush))))
+      (print! tokens 'flush))))

@@ -6,7 +6,7 @@
                      "txexpr"))
 (define scribblings '(("scribblings/html-printer.scrbl" ())))
 (define pkg-desc "A content aware pretty-printer for HTML5")
-(define version "0.1")
+(define version "1.2")
 (define pkg-authors '(joel))
 (define license '(Apache-2.0 OR MIT))
 (define deps '("base"

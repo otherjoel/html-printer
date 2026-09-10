@@ -42,11 +42,9 @@ Requires Racket 8.13 or later.
                        [#:wrap wrap-col exact-positive-integer? 100]
                        [#:add-breaks? add-breaks? any/c #f]) string?]{
 
- Converts @racket[_xpr] to a string of HTML, nicely wrapped and indented, ready for consumption.
- Leave @racket[_wrap-col] at its default of 100 columns, or shrink it down hard to test the
- line-wrapping algorithm. No line will be longer than @racket[_wrap-col] columns unless it consists
- of a single run that cannot be broken, such as a long word or an attribute value, and no line ends
- in whitespace.
+ Converts @racket[_xpr] to a string of HTML, indented and wrapped to @racket[_wrap-col] columns. No
+ line will be longer than @racket[_wrap-col] columns unless it consists of content that cannot be
+ broken without introducing whitespace, such as a long word or an attribute value. 
 
  @examples[#:eval examps
            (display
@@ -99,8 +97,9 @@ Requires Racket 8.13 or later.
 
 @section[#:tag "deets"]{Crunchy details}
 
-This package includes @hyperlink["https://github.com/otherjoel/html-printer/blob/main/html-printer-lib/test.rkt"]{an
- extensive set of unit tests}. In addition to preventing regressions, these nicely illustrate the
+This package includes
+@hyperlink["https://github.com/otherjoel/html-printer/blob/main/html-printer-lib/test.rkt"]{an
+extensive set of unit tests}. In addition to preventing regressions, these nicely illustrate the
 printer’s expected behavior in a variety of edge cases.
 
 @subsection{HTML particulars}
@@ -159,11 +158,11 @@ of valid custom element names} in the HTML Living Standard for more details.}
 
 @examples[#:eval examps #:label #f
           (display 
-           (xexpr->html5 '(article (sale-price (p [[class "price-num"]] "$250")))))]
+           (xexpr->html5 '(article (sale-price (p "$250")))))]
 
 @bold{Differences from XML/XHTML:} Attributes which
 @hyperlink["https://html.spec.whatwg.org/multipage/indices.html#attributes-3"]{the HTML5 spec
- identifies as boolean attributes} are printed using the HTML5 “short” syntax. So, for example when
+identifies as boolean attributes} are printed using the HTML5 “short” syntax. So, for example when
 @code{'(disabled "true")} is supplied as an attribute, it is printed as @racketoutput{disabled}
 rather than @racketoutput{disabled=""} or @racketoutput{disabled="disabled"}.
 
@@ -251,22 +250,23 @@ There are a few significant differences between Tidy and this package:
 
 @itemlist[
 
- @item{HTML Tidy parses its input the way a browser would and then @emph{repairs} it. It moves
-  @racketoutput{<style>} tags into the @racketoutput{<head>}, inserts a missing
-  @racketoutput{<title>}, discards elements that are not allowed where they appear, removes empty
-  elements such as an empty @racketoutput{<figcaption>}, converts character entities to literal
-  characters, and normalizes attribute values. This library never alters the document: it prints
-  exactly the elements, attributes and text it is given, only wrapped and indented. Structure that
-  is not valid HTML, such as a @racketoutput{<div>} inside a @racketoutput{<p>}, is printed as-is.}
+@item{HTML Tidy generally tries to @emph{repair} its input in addition to formatting it. It moves
+@racketoutput{<style>} tags into the @racketoutput{<head>}, inserts a missing
+@racketoutput{<title>}, discards elements that are not allowed where they appear, removes empty
+elements such as an empty @racketoutput{<figcaption>}, converts character entities to literal
+characters, and normalizes attribute values. In contrast, @racket[xexpr->html5] never alters the
+document: its formatted output always contains exactly the elements, attributes and text it is
+given. Structure that is not valid HTML, such as a @racketoutput{<div>} inside a
+@racketoutput{<p>}, is printed as-is.}
 
- @item{HTML Tidy still counts line width by characters rather than graphemes, so it may wrap
-lines earlier than necessary when they contain emoji or other multi-byte graphemes.}
+@item{HTML Tidy still counts line width by characters rather than graphemes, so it may wrap lines
+earlier than necessary when they contain emoji or other multi-byte graphemes.}
 
- @item{HTML Tidy has numerous configuration options for adjusting the output formatting and for pruning
-  the output (such as removing empty elements that could otherwise have content).
-  @racket[xexpr->html5] offers very few options for customizing the output, focusing instead on
-  providing a reasonable set of defaults, and avoiding any meaningful transformation of the structure
-  of the HTML input.}
+@item{HTML Tidy has numerous configuration options for adjusting the output formatting and for
+pruning the output (such as removing empty elements that could otherwise have content).
+@racket[xexpr->html5] offers very few options for customizing the output, focusing instead on
+providing a reasonable set of defaults, and avoiding any meaningful transformation of the structure
+of the HTML input.}
 
  ]
 
@@ -286,28 +286,32 @@ Otherwise, the tests will pass without any comparison actually being made.
 I lied at the beginning of these docs when I said this package only provides a single function. Here
 are a couple more, though they will only be interesting to people who really want to kick the tires.
 
-@deftogether[(
-             
-              @defproc[(proof [x xexpr?] [#:wrap wrap exact-positive-integer? 20]) void?]
- 
-               @defproc[(debug [x xexpr?] [#:wrap wrap exact-positive-integer? 20]) void?]
-
+@deftogether[(@defproc[(proof [x xexpr?] [#:wrap wrap exact-positive-integer? 20]) void?]
+              @defproc[(debug [x xexpr?]
+                              [#:wrap wrap exact-positive-integer? 20]
+                              [#:show phases (listof (or/c 'expr 'tokens 'printer)) '(expr tokens printer)])
+                       void?]
 )]{
 
- Used for a close visual inspection of line wrapping and indentation, @racket[proof] displays the
- result of @racket[(xexpr->html5 x #:wrap wrap)] but with a column rule at the top and whitespace
- characters made visible:
+Used for a close visual inspection of line wrapping and indentation, @racket[proof] displays the
+result of @racket[(xexpr->html5 x #:wrap wrap)] but with a column rule at the top and whitespace
+characters made visible:
 
- @examples[#:eval examps #:label #f
-           (proof '(p "Chaucer, Rabelais and " (em "Balzac!")))]
+@examples[#:eval examps #:label #f
+          (proof '(p "Chaucer, Rabelais and " (em "Balzac!")))]
 
- The @racket[debug] function does the same thing but spits out an ungodly amount of gross logging on
- @racket[(current-error-port)], for use in debugging the printing algorithm. (Note that all logging
- activity is disabled by default because of its huge performance penalty, but it gets temporarily
- enabled during calls to @racket[debug] by way of @racket[parameterize].)
+The @racket[debug] function does the same thing but spits out an ungodly amount of gross logging on
+@racket[(current-error-port)], for use in debugging the printing algorithm. (Note that all logging
+activity is disabled by default because of its huge performance penalty, but it gets temporarily
+enabled during calls to @racket[debug] by way of @racket[parameterize].) The logging comes in three
+phases, and @racket[phases] selects which are shown: @racket['expr] logs the walk over the
+X-expression, one indented line per element; @racket['tokens] logs the stream of printer tokens
+that the walk produces, broken into lines where the output breaks; and @racket['printer] logs the
+line-wrapping printer's state at every token, with each decision to break a line and the arithmetic
+behind it.
 
- @examples[#:eval examps #:label #f
-           (debug '(p "Chaucer, Rabelais and " (em "Balzac!")))]
+@examples[#:eval examps #:label #f
+(debug '(p "Chaucer, Rabelais and " (em "Balzac!")))]
 
 }
 

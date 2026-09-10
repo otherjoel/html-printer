@@ -3,6 +3,6 @@
 (define deps '(["base" #:version "8.13"]))
 (define build-deps '("rackunit-lib"))
 (define pkg-desc "A content aware pretty-printer for HTML5 (implementation)")
-(define version "1.1")
+(define version "1.2")
 (define pkg-authors '(joel))
 (define license '(Apache-2.0 OR MIT))

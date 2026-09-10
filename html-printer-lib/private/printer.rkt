@@ -6,6 +6,7 @@
          (only-in racket/syntax format-symbol))
 
 (provide make-wrapping-printer
+         token->string
          (struct-out text)
          (struct-out raw))
 
@@ -35,6 +36,23 @@
 (struct text (str) #:transparent)
 (struct raw (str indent?) #:transparent)
 
+;; Compact rendering of a token for the debug log: text as a bare string, raw with a truncated
+;; string, and the symbolic tokens as themselves
+(define (token->string tok)
+  (match tok
+    [(text s) (format "~s" s)]
+    [(raw s indent?)
+     (define shown (if (> (string-length s) 30) (string-append (substring s 0 30) "…") s))
+     (format "raw~a~s" (if indent? "+indent" "") shown)]
+    [(? symbol?) (symbol->string tok)]
+    [_ (format "~s" tok)]))
+
+;; Pad s with spaces to at least n characters, for aligning log fields
+(define (pad s n)
+  (if (< (string-length s) n)
+      (string-append s (make-string (- n (string-length s)) #\space))
+      s))
+
 (define (make-wrapping-printer [outp (current-output-port)]
                                #:wrap-at [wrap-col 100]
                                #:indent-spaces [indent 2])
@@ -48,6 +66,7 @@
   (define (write! s) (display s outp))
 
   (define (newline!)
+    (log-printer "  ── line ended at col ~a" (- col 1))
     (write! (sys-newline))
     (set! col 1)
     (set! line-start? #t)
@@ -68,7 +87,15 @@
       (define sep? (and (eq? pending 'space) (not line-start?)))
       (define needed (+ cluster-width (if sep? 1 0)))
       (define fits? (or line-start? (<= (+ col needed -1) wrap-col)))
-      (log-printer 1 commit _ col cluster-width sep? fits? line-start? indent-level cluster)
+      (log-printer "  commit ~s (~a)  ~a"
+                   (apply string-append (reverse cluster))
+                   cluster-width
+                   (cond
+                     [line-start? "at line start"]
+                     [else (format "col ~a + sep ~a + ~a ends at ~a ~a ~a~a"
+                                   col (if sep? 1 0) cluster-width (+ col needed -1)
+                                   (if fits? "<=" ">") wrap-col
+                                   (if fits? "" "  BREAK"))]))
       (unless fits? (newline!))
       (cond
         [line-start? (start-line!)]
@@ -111,7 +138,12 @@
 
   (define (handle! tok)
     (unless (list? tok)
-      (log-printer 1 token _ tok col line-start? pending cluster-width indent-level))
+      (log-printer "~a col=~a ind=~a pend=~a cluster=~a"
+                   (pad (token->string tok) 20)
+                   (pad (number->string col) 3)
+                   (pad (number->string indent-level) 2)
+                   (pad (symbol->string pending) 9)
+                   cluster-width))
     (match tok
       [(text s) (text! s)]
       [(raw s indent?) (raw! s indent?)]
