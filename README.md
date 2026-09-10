@@ -12,10 +12,3 @@ To install:
 
     > raco pkg install html-printer
 
-## Lingering questions…
-
-- How much logging/debugging instrumentation should be left in? (Probably none except for errors,
-  but see next question)
-
-- What should happen when an X-expression's structure is not valid HTML, such as a `<div>` inside a
-  `<p>`? Currently it just logs an error, but maybe it should throw an exception?
