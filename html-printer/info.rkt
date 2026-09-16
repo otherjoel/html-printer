@@ -4,7 +4,7 @@
 (define build-deps '("racket-doc"
                      "scribble-lib"
                      "txexpr"))
-(define scribblings '(("scribblings/html-printer.scrbl" ())))
+(define scribblings '(("scribblings/html-printer.scrbl" (multi-page))))
 (define pkg-desc "A content aware pretty-printer for HTML5")
 (define version "1.2")
 (define pkg-authors '(joel))
